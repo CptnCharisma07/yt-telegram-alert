@@ -1,57 +1,58 @@
-name,channel_id
-Drishti IAS,UCzLqOSZPtUKrmSEnlH4LAvw
-Drishti IAS : English,UCafpueX9hFLls24ed6UddEQ
-UPPCS by Drishti IAS,UCsEHYlZjY9LYIIvEsynL_yQ
-BPSC & JPSC by Drishti IAS,UC02E2QFFOxvr2TREVMiBIgw
-RAS by Drishti IAS,UC_S93AEj8xKsWkRQOLPNK4g
-MPPSC by Drishti IAS,UCSLNpytSYnXOLNBCb62oxsQ
-Haryana PCS by Drishti IAS,UCbNHiSeFrYhUXBJP-X_1V7A
-Maharashtra MPSC by Drishti IAS,UCYQj5OF3NIAUwPmVvOLMLKw
-PW OnlyIAS,UCh4f3NyOzqGwZfwTSX78QfQ
-UPSC Wallah,UCqOy6oOu6RPJNHYQ8f_Ybvg
-OnlyIAS हिंदी माध्यम,UCmrP-DYdZuThp8AO9lnnwNw
-OnlyIAS Extended,UCAidhU356a0ej2MtFEylvBA
-PW OnlyIAS Prarambh,UC17PM-3GiJIeIUogU2Y1t1Q
-BPSC Wallah,UC9ojDGjDozoskCUmD3e5omg
-PW OnlyIAS English,UC9fQuR3XRALjaIZtKGSNJcQ
-MPSC Wallah,UC1Fc-8RLxmoi6Tw9cbNoxxQ
-PW OnlyIAS - UP,UCKKG8sYJdtcJYFIKLwsH6Ng
-WBPSC Wallah,UCL0Bks2X-37TI1NKGVh4cuA
-PW OnlyIAS Offline,UC4qbM7cBX0xxNbCY2D7rj4A
-RAS Wallah,UCvm4awNo0yqRklv6wST6gEA
-StudyIQ IAS,UCrC8mOqJQpoB7NuIMKIS6rQ
-StudyIQ IAS हिंदी,UCKSGmEx5nKZCgjRny-9LaWQ
-StudyIQ PCS,UC-dqsmy1qOtU06d3-U896lQ
-Haryana StudyIQ,UC3lY58Jb6jycvsowicsvQew
-OPSC StudyIQ,UC9k0oRCpGfdlFEgHzcHgWqg
-BPSC StudyIQ,UC-7fHTMoiyy9quFHzKyaNFg
-UPPCS StudyIQ,UCxTH9tmz17fQhFzTmvvnrwg
-UPSC Optionals StudyIQ,UC0Jh3Tbn81xpp89LAezlzrg
-MPPSC StudyIQ,UC5nKn_9z2LCNNWEanR3XNNQ
-UPSC Unstoppables by Unacademy,UCVOyyXupdtEblFbno_4ibLQ
-Unacademy IAS: English,UC7Q0EfPzTwtanMVSWuK_QXA
-Unacademy Exam रस,UC_LuSHLEKMS_Zoh1msQ2J-w
-UPSC Blueprint by Unacademy,UCrne5jzEiAuI54_-R4UyVxA
-Sudarshan Gurjar Unacademy,UC9cpGw2hVv-6G-76HO22jQg
-Mrunal Patel Unacademy,UCwDfgcUkKKTxPozU9UnQ8Pw
-EDU TERIA,UCy_61OtuuaIr3WZMnTV79DQ
-EDU TERIA IAS,UCO8z3SN1z7eeinah8VWYc4w
-NEXT IAS,UCgKgAaGbKS-XWUJGWqP5W0A
-NEXT IAS HINDI,UCAW-rpG882FJA-1EvWueTCg
-PCS by NEXT IAS,UCsCQL6NBFxmlffJjxF-zmSA
-Vajiram and Ravi Official,UCzelA5kqD9v6k6drK44l4_g
-Vajiram & Ravi Hindi,UCe6aCM8xudXv3rlBc5C75Wg
-RWA Civil Services,UCUFKB9lrxAexf6cyYjy4D0Q
-RWA IAS,UCpyD27RUbl_QCfXFoplNreg
-Sanskriti IAS,UC58IAk1i-6d5XgHZG4NnffA
-Vision IAS,UCw4wosjC-DKq95xI5klz92w
-Sleepy Classes IAS,UCgRf62bnK3uX4N-YEhG4Jog
-UPSCprep.com,UCfK07E90OzqP-VafR4kJ0iQ
-theIAShub (MK Yadav),UC5sVjevJfKZdNheKRabSYBQ
-Shubhra Ranjan IAS Study,UCn7lUEF9AzgF_BJaRMsHRjQ
-Sarrthi IAS,UChO18r_h8-K_Lf4Hb-bYGDQ
-Clarity for UPSC by Dr.Shivin,UC5aE5_undvBtBN5y_BscU0Q
-ForumIAS Official,UCzuYmh_kQUpJpguQCwLKoPg
-KSG IAS,UC6sOW5RX9miothdP0MteJvQ
-Shankar IAS Academy,UCj0t9VmB-FNrXuVJJCW7etw
-Civilsdaily IAS,UCiOVE31BCTznIdDKnaRm0Yg
+name,channel_id,brand,exams
+Drishti IAS,UCzLqOSZPtUKrmSEnlH4LAvw,Drishti,UPSC
+Drishti IAS : English,UCafpueX9hFLls24ed6UddEQ,Drishti,UPSC
+UPPCS by Drishti IAS,UCsEHYlZjY9LYIIvEsynL_yQ,Drishti,UPPCS
+BPSC & JPSC by Drishti IAS,UC02E2QFFOxvr2TREVMiBIgw,Drishti,BPSC;JPSC
+RAS by Drishti IAS,UC_S93AEj8xKsWkRQOLPNK4g,Drishti,RAS
+MPPSC by Drishti IAS,UCSLNpytSYnXOLNBCb62oxsQ,Drishti,MPPSC
+Haryana PCS by Drishti IAS,UCbNHiSeFrYhUXBJP-X_1V7A,Drishti,HCS
+Maharashtra MPSC by Drishti IAS,UCYQj5OF3NIAUwPmVvOLMLKw,Drishti,MPSC
+PW OnlyIAS,UCh4f3NyOzqGwZfwTSX78QfQ,PW,UPSC
+UPSC Wallah,UCqOy6oOu6RPJNHYQ8f_Ybvg,PW,UPSC
+OnlyIAS हिंदी माध्यम,UCmrP-DYdZuThp8AO9lnnwNw,PW,UPSC
+OnlyIAS Extended,UCAidhU356a0ej2MtFEylvBA,PW,UPSC
+PW OnlyIAS Prarambh,UC17PM-3GiJIeIUogU2Y1t1Q,PW,UPSC
+BPSC Wallah,UC9ojDGjDozoskCUmD3e5omg,PW,BPSC
+PW OnlyIAS English,UC9fQuR3XRALjaIZtKGSNJcQ,PW,UPSC
+MPSC Wallah,UC1Fc-8RLxmoi6Tw9cbNoxxQ,PW,MPSC
+PW OnlyIAS - UP,UCKKG8sYJdtcJYFIKLwsH6Ng,PW,UPSC;UPPCS
+UPPSC Wallah,UCFjoddg_kAviiVGYoglk5pg,PW,UPPCS
+WBPSC Wallah,UCL0Bks2X-37TI1NKGVh4cuA,PW,WBPSC
+PW OnlyIAS Offline,UC4qbM7cBX0xxNbCY2D7rj4A,PW,UPSC
+RAS Wallah,UCvm4awNo0yqRklv6wST6gEA,PW,RAS
+StudyIQ IAS,UCrC8mOqJQpoB7NuIMKIS6rQ,StudyIQ,UPSC
+StudyIQ IAS हिंदी,UCKSGmEx5nKZCgjRny-9LaWQ,StudyIQ,UPSC
+StudyIQ PCS,UC-dqsmy1qOtU06d3-U896lQ,StudyIQ,State PCS
+Haryana StudyIQ,UC3lY58Jb6jycvsowicsvQew,StudyIQ,HCS
+OPSC StudyIQ,UC9k0oRCpGfdlFEgHzcHgWqg,StudyIQ,OPSC
+BPSC StudyIQ,UC-7fHTMoiyy9quFHzKyaNFg,StudyIQ,BPSC
+UPPCS StudyIQ,UCxTH9tmz17fQhFzTmvvnrwg,StudyIQ,UPPCS
+UPSC Optionals StudyIQ,UC0Jh3Tbn81xpp89LAezlzrg,StudyIQ,UPSC
+MPPSC StudyIQ,UC5nKn_9z2LCNNWEanR3XNNQ,StudyIQ,MPPSC
+UPSC Unstoppables by Unacademy,UCVOyyXupdtEblFbno_4ibLQ,Unacademy,UPSC
+Unacademy IAS: English,UC7Q0EfPzTwtanMVSWuK_QXA,Unacademy,UPSC
+Unacademy Exam रस,UC_LuSHLEKMS_Zoh1msQ2J-w,Unacademy,State PCS
+UPSC Blueprint by Unacademy,UCrne5jzEiAuI54_-R4UyVxA,Unacademy,UPSC
+Sudarshan Gurjar Unacademy,UC9cpGw2hVv-6G-76HO22jQg,Unacademy,UPSC
+Mrunal Patel Unacademy,UCwDfgcUkKKTxPozU9UnQ8Pw,Unacademy,UPSC
+EDU TERIA,UCy_61OtuuaIr3WZMnTV79DQ,Edu Teria,BPSC
+EDU TERIA IAS,UCO8z3SN1z7eeinah8VWYc4w,Edu Teria,UPSC
+NEXT IAS,UCgKgAaGbKS-XWUJGWqP5W0A,NEXT IAS,UPSC
+NEXT IAS HINDI,UCAW-rpG882FJA-1EvWueTCg,NEXT IAS,UPSC
+PCS by NEXT IAS,UCsCQL6NBFxmlffJjxF-zmSA,NEXT IAS,State PCS
+Vajiram and Ravi Official,UCzelA5kqD9v6k6drK44l4_g,Vajiram & Ravi,UPSC
+Vajiram & Ravi Hindi,UCe6aCM8xudXv3rlBc5C75Wg,Vajiram & Ravi,UPSC
+RWA Civil Services,UCUFKB9lrxAexf6cyYjy4D0Q,RWA,UPSC;State PCS
+RWA IAS,UCpyD27RUbl_QCfXFoplNreg,RWA,UPSC
+Sarrthi IAS,UChO18r_h8-K_Lf4Hb-bYGDQ,Sarrthi,UPSC
+Clarity for UPSC by Dr.Shivin,UC5aE5_undvBtBN5y_BscU0Q,Sarrthi,UPSC
+Sanskriti IAS,UC58IAk1i-6d5XgHZG4NnffA,Sanskriti IAS,UPSC
+Vision IAS,UCw4wosjC-DKq95xI5klz92w,Vision IAS,UPSC
+Sleepy Classes IAS,UCgRf62bnK3uX4N-YEhG4Jog,Sleepy Classes,UPSC
+UPSCprep.com,UCfK07E90OzqP-VafR4kJ0iQ,UPSCprep,UPSC
+theIAShub (MK Yadav),UC5sVjevJfKZdNheKRabSYBQ,theIAShub,UPSC
+Shubhra Ranjan IAS Study,UCn7lUEF9AzgF_BJaRMsHRjQ,Shubhra Ranjan,UPSC
+ForumIAS Official,UCzuYmh_kQUpJpguQCwLKoPg,ForumIAS,UPSC
+KSG IAS,UC6sOW5RX9miothdP0MteJvQ,KSG IAS,UPSC
+Shankar IAS Academy,UCj0t9VmB-FNrXuVJJCW7etw,Shankar IAS,UPSC
+Civilsdaily IAS,UCiOVE31BCTznIdDKnaRm0Yg,Civilsdaily,UPSC
