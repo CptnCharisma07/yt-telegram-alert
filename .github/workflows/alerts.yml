@@ -1,4 +1,4 @@
-name: YouTube alerts
+name: YouTube tracker
 
 on:
   schedule:
@@ -6,30 +6,41 @@ on:
   workflow_dispatch: {}       # lets you run it by hand from the Actions tab
 
 permissions:
-  contents: write             # needed to save state.json back to the repo
+  contents: write             # saves data to the "data" branch
 
 concurrency:
-  group: youtube-alerts
+  group: youtube-tracker
   cancel-in-progress: false
 
 jobs:
-  check:
+  run:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Check channels and send alerts
+
+      # All bot memory and dashboard data live on a separate "data" branch (one commit, replaced each run),
+      # so the main branch only changes when you edit it.
+      - name: Get saved data
+        run: |
+          git clone --depth 1 --branch data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data-store 2>/dev/null || mkdir -p data-store
+
+      - name: Collect stats and send alerts
         env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python alert.py
-      - name: Save state
+          DATA_DIR: data-store
+        run: python collector.py
+
+      - name: Save data
         run: |
-          git config user.name "alerts-bot"
-          git config user.email "alerts-bot@users.noreply.github.com"
-          git add state.json
-          git diff --cached --quiet || git commit -m "Update alert state" -q
-          git pull --rebase -q && git push -q
+          cd data-store
+          rm -rf .git && git init -q -b data
+          git config user.name "tracker-bot"
+          git config user.email "tracker-bot@users.noreply.github.com"
+          git add -A && git commit -q -m "Tracker data"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
