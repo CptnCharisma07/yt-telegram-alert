@@ -365,6 +365,20 @@ function gains(chFilter, prev = false) {
   return m;
 }
 const chOk = c => (!S.brand || c.brand === S.brand) && (!S.exam || c.exams.includes(S.exam));
+// per-upload views gained, available for Today and Yesterday (gt/gy/gd come from the collector)
+const dayStr = off => istDate(new Date(Date.now() + off * 864e5)).toISOString().slice(0, 10);
+function vGain(v) {
+  if (v.gd == null) return null;
+  const t = dayStr(0), y = dayStr(-1);
+  if (S.range === "today") return v.gd === t ? (v.gt || 0) : 0;
+  if (S.range === "yesterday") return v.gd === t ? (v.gy || 0) : v.gd === y ? (v.gt || 0) : 0;
+  return null;
+}
+// only trust per-upload gains for days that were tracked from midnight
+const hasVGain = () => { const vs = DB.meta.vgains_since, day = dayStr(S.range === "today" ? 0 : -1);
+  return (S.range === "today" || S.range === "yesterday") && !!vs && day > vs && DB.vids.some(v => v.gd != null); };
+// days before the first complete tracking day are partial
+function partialDays(keys) { const gs = DB.meta.gains_since; if (!gs) return []; return keys.filter(k => k <= gs); }
 const sumG = (g, pred) => { let s = 0; for (const [cid, x] of g) if (pred(DB.chMap[cid])) s += x; return s; };
 
 // ---------- UI pieces ----------
@@ -372,9 +386,9 @@ function card(v, rank) {
   const kind = isLiveNow(v) ? `<span class="badge kind live">● LIVE${v.cv ? " · " + n(v.cv) : ""}</span>` : isUpcoming(v) ? `<span class="badge kind up">⏰ ${esc(fmtIST(v.at))}</span>` : v.k === "live" ? `<span class="badge kind">Live</span>` : "";
   const hot = v.mult && v.mult >= 2 && !isUpcoming(v) ? `<span class="pill hot">${v.mult.toFixed(1)}× usual</span>` : "";
   return `<div class="card${v.brand === HOME ? " home" : ""}" tabindex="0" data-vid="${v.id}">
-    <div class="thumb"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" alt="">${kind}${v.d && !isLiveNow(v) ? `<span class="badge dur">${dur(v.d)}</span>` : ""}${rank ? `<span class="badge rank">#${rank}</span>` : ""}</div>
+    <div class="thumb"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/${isLiveNow(v) || isUpcoming(v) ? "hqdefault" : "mqdefault"}.jpg" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://i.ytimg.com/vi/${v.id}/hqdefault.jpg'}" alt="">${kind}${v.d && !isLiveNow(v) ? `<span class="badge dur">${dur(v.d)}</span>` : ""}${rank ? `<span class="badge rank">#${rank}</span>` : ""}</div>
     <div class="body"><div class="t">${esc(v.t)}</div><div class="ch"><b>${esc(v.brand)}</b> · ${esc(v.ch.name)}</div>
-    <div class="stats"><span>👁 <b>${n(v.v)}</b></span><span>👍 <b>${n(v.l)}</b></span><span>💬 <b>${n(v.cm)}</b></span><span>${ago(v.at)}</span></div>${hot}</div></div>`;
+    <div class="stats"><span title="Total views">👁 <b>${n(v.v)}</b></span>${(() => { const g = VG_ON ? vGain(v) : 0; return g ? `<span title="Views gained ${S.range === "today" ? "today" : "yesterday"}" style="color:var(--good)">▲ <b style="color:inherit">${n(g)}</b> ${S.range === "today" ? "today" : "yday"}</span>` : ""; })()}<span title="Likes">👍 <b>${n(v.l)}</b></span><span title="Comments">💬 <b>${n(v.cm)}</b></span><span>${ago(v.at)}</span></div>${hot}</div></div>`;
 }
 function cards(list, limit = 48, ranked = false) { return list.length ? `<div class="cards">${list.slice(0, limit).map((v, i) => card(v, ranked ? i + 1 : 0)).join("")}</div>` : `<div class="empty">Nothing in this range with these filters.</div>`; }
 
@@ -382,9 +396,19 @@ function table(id, cols, rows, opts = {}) {
   const st = S.sort[id] || { k: opts.sortKey || cols.find(c => c.num)?.k, d: -1 };
   rows = [...rows].sort((a, b) => { const x = a[st.k], y = b[st.k]; return (typeof x === "string" ? x.localeCompare(y) : (x ?? -1) - (y ?? -1)) * st.d; });
   const max = {}; cols.forEach(c => { if (c.bar) max[c.k] = Math.max(1, ...rows.map(r => r[c.k] || 0)); });
-  return `<div class="tablewrap"><table data-tid="${id}"><thead><tr>${cols.map(c => `<th class="${c.num ? "" : "l"} ${st.k === c.k ? "sorted" : ""}" data-k="${c.k}">${c.h}</th>`).join("")}</tr></thead><tbody>${rows.map(r =>
+  return `<div class="tablewrap"><table data-tid="${id}"><thead><tr>${cols.map(c => `<th class="${c.num ? "" : "l"} ${st.k === c.k ? "sorted" : ""}" data-k="${c.k}" title="${esc(COLTIP[c.k] || "Click to sort")}">${c.h}</th>`).join("")}</tr></thead><tbody>${rows.map(r =>
     `<tr class="${r._home ? "home" : ""} ${r._sel ? "sel" : ""} ${r._click ? "click" : ""}" ${r._click ? `data-click="${esc(r._click)}"` : ""}>${cols.map(c => `<td class="${c.num ? "" : "l"}">${c.f ? c.f(r[c.k], r) : esc(r[c.k])}${c.bar ? `<span class="bar" style="width:${Math.round(40 * (r[c.k] || 0) / max[c.k])}px"></span>` : ""}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
+const COLTIP = {
+  gained: "New views picked up during the selected days by every tracked upload (last 60 days), old and new",
+  gshare: "Share of all views gained in the selected days",
+  views: "Total views so far on uploads posted in the selected days",
+  avg: "Average total views per upload posted in the selected days",
+  med: "Middle value of total views per upload posted in the selected days",
+  avg24: "Average views each upload had 24 hours after going up",
+  eng: "(Likes + comments) / views, for uploads posted in the selected days",
+  n: "Videos and lives posted in the selected days"
+};
 const brandCols = [
   { k: "name", h: "Brand", f: (x, r) => `${r.rank ? `<span class="rk">${r.rank}</span>` : ""}<b>${esc(x)}</b>${r._home ? ' <span class="pill hot">You</span>' : ""}` },
   { k: "chs", h: "Channels", num: 1 }, { k: "n", h: "Uploads", num: 1 }, { k: "nv", h: "Videos", num: 1 }, { k: "nl", h: "Lives", num: 1 },
@@ -408,13 +432,25 @@ function vOverview() {
   const totalGained = rows.reduce((s, r) => s + (r.gained || 0), 0), totalViews = rows.reduce((s, r) => s + (r.views || 0), 0);
   const homeShare = DB.hasGains ? home.gshare : (totalViews ? home.views / totalViews : null);
   const liveNow = DB.vids.filter(v => isLiveNow(v) && (!S.brand || v.brand === S.brand) && (!S.exam || v.exams.includes(S.exam))).sort((x, y) => (y.cv || 0) - (x.cv || 0));
-  const exams = DB.exams.map(e => { const l = list.filter(v => v.exams.includes(e)); const g = groupBy(l, v => v.brand); let best = null, bv = -1; for (const [b, vs] of g) { const s = vs.reduce((t, v) => t + (v.v || 0), 0); if (s > bv) { bv = s; best = b; } } const top = l.reduce((b, v) => !b || (v.v || 0) > (b.v || 0) ? v : b, null); return { e, n: l.length, best, bv, top }; }).filter(x => x.n);
+  // per exam: top brand by views gained (or views on uploads before gains exist); top upload by views gained today/yesterday, else total views
+  const exams = DB.exams.map(e => { const l = list.filter(v => v.exams.includes(e)); let best = null, bv = -1;
+    if (DB.hasGains) { const G = gains(c => c.exams.includes(e) && chOk(c)); for (const b of DB.brands) { const s = sumG(G, c => c.brand === b); if (s > bv) { bv = s; best = b; } } }
+    else { for (const [b, vs] of groupBy(l, v => v.brand)) { const s = vs.reduce((t, v) => t + (v.v || 0), 0); if (s > bv) { bv = s; best = b; } } }
+    const pool = hasVGain() ? base({ anyTime: true }).filter(v => v.exams.includes(e)) : l, score = v => hasVGain() ? (vGain(v) || 0) : (v.v || 0);
+    const top = pool.reduce((b, v) => !b || score(v) > score(b) ? v : b, null);
+    return { e, n: l.length, best: bv > 0 ? best : "–", bv: Math.max(0, bv), top }; }).filter(x => x.n || x.bv);
   const trend = trendingList(list).slice(0, 8);
   // share of voice + change vs the previous period of the same length
   const shareOf = r => DB.hasGains ? r.gshare : (totalViews ? r.views / totalViews : 0);
   const PG = DB.hasGains ? gains(chOk, true) : null, prevTotal = PG ? [...PG.values()].reduce((s, x) => s + x, 0) : 0;
   const prevHome = PG && prevTotal ? sumG(PG, c => c.brand === HOME) / prevTotal : null;
-  const dShare = prevHome != null && homeShare != null ? (homeShare - prevHome) * 100 : null;
+  const dShare = prevHome != null && homeShare != null && !partialDays(dayKeys(true)).length ? (homeShare - prevHome) * 100 : null;
+  // split views gained into "uploads posted in this period" vs "older uploads"
+  const vg = hasVGain(), anyUp = base({ anyTime: true, ignoreBrand: true }), inRange = new Set(list.map(v => v.id));
+  const splitFor = pred => { let nw = 0, old = 0; for (const v of anyUp) { if (!pred(v)) continue; const g = vGain(v) || 0; if (inRange.has(v.id)) nw += g; else old += g; } return [nw, old]; };
+  const [homeNew, homeOld] = vg ? splitFor(v => v.brand === HOME) : [null, null], [allNew, allOld] = vg ? splitFor(v => !S.brand || v.brand === S.brand) : [null, null];
+  const topGain = vg ? anyUp.filter(v => !S.brand || v.brand === S.brand).map(v => ({ v, g: vGain(v) || 0 })).filter(x => x.g > 0).sort((x, y) => y.g - x.g).map(x => x.v) : [];
+  const partial = DB.hasGains ? partialDays(dayKeys()) : [];
   ranked.forEach((r, i) => r.rank = i + 1);
   const active = ranked.filter(r => r.n || r.gained), top = active.slice(0, 7), rest = active.slice(7), restShare = rest.reduce((s, r) => s + (shareOf(r) || 0), 0);
   const col = (r, i) => r._home ? "var(--home)" : `color-mix(in srgb, var(--accent) ${Math.max(22, 92 - i * 11)}%, var(--surface2))`;
@@ -423,13 +459,15 @@ function vOverview() {
   const dTag = dShare == null ? "" : `<span class="delta ${dShare >= 0 ? "up" : "down"}">${dShare >= 0 ? "▲" : "▼"} ${Math.abs(dShare).toFixed(1)} pts</span>`;
   const compact = !S.fullCols, cols = compact ? brandCols.filter(c => ["name", "n", "nv", "nl", "gained", "gshare", "avg24", "eng"].includes(c.k) || (!DB.hasGains && c.k === "views")) : brandCols;
   return `${!DB.meta.api ? `<div class="notice">Running without a YouTube API key, so only views and likes for each channel's latest 15 uploads are shown. Add the <b>YOUTUBE_API_KEY</b> secret for comments, durations, live viewers and full history.</div>` : ""}
+  ${partial.length ? `<div class="notice">Views gained started counting on the evening of ${esc(partial[partial.length - 1])}, so that day only includes its new uploads plus a few hours of growth on older ones. Pick <b>Today</b> or later dates for complete numbers.</div>` : ""}
+  ${S.q && DB.hasGains ? `<div class="notice">The title search filters the upload lists, but views gained still covers every upload.</div>` : ""}
   <section class="hero">
     <div class="hero-main">
       <div class="eyebrow">${HOME} · ${esc(label)}</div>
       <div class="hero-rank"><span class="big">#${homeRank || "–"}</span><span class="of">of ${active.length} active brands by ${DB.hasGains ? "views gained" : "views on uploads"}</span></div>
       <div class="hero-stats">
         <div class="hs"><div class="v">${pct(homeShare)} ${dTag}</div><div class="l">share of ${DB.hasGains ? "views gained" : "views"}${dShare != null ? " · vs previous period" : ""}</div></div>
-        <div class="hs"><div class="v">${n(DB.hasGains ? home.gained : home.views)}</div><div class="l">${DB.hasGains ? "views gained" : "views on uploads"}</div></div>
+        <div class="hs"><div class="v">${n(DB.hasGains ? home.gained : home.views)}</div><div class="l">${DB.hasGains ? (vg ? `views gained · ${n(homeNew)} on new uploads, ${n(homeOld)} on older ones` : "views gained on all uploads") : "views on uploads"}</div></div>
         <div class="hs"><div class="v">${home.n ?? 0}</div><div class="l">uploads · ${home.nv ?? 0} videos, ${home.nl ?? 0} lives</div></div>
         <div class="hs"><div class="v">${n(home.avg24 ?? home.avg)}</div><div class="l">${home.avg24 != null ? "avg views at 24h" : "avg views per upload"} · eng ${pct(home.eng)}</div></div>
       </div>
@@ -442,8 +480,8 @@ function vOverview() {
   </section>
   <section class="kpis">
     <div class="kpi"><div class="lbl">Uploads · ${esc(label)}</div><div class="val">${a.n}</div><div class="note">${a.nv} videos · ${a.nl} lives</div></div>
-    <div class="kpi"><div class="lbl">${DB.hasGains ? "Views gained, all brands" : "Views on these"}</div><div class="val">${n(DB.hasGains ? totalGained : a.views)}</div><div class="note">${DB.hasGains ? `${n(a.views)} on new uploads` : `avg ${n(a.avg)} per upload`}</div></div>
-    <div class="kpi"><div class="lbl">Avg views at 24h</div><div class="val">${n(a.avg24)}</div><div class="note">all brands · ${a.n24} uploads measured</div></div>
+    <div class="kpi"><div class="lbl">${DB.hasGains ? "Views gained, all brands" : "Views on these uploads"}</div><div class="val">${n(DB.hasGains ? totalGained : a.views)}</div><div class="note">${DB.hasGains ? (vg ? `${n(allNew)} on new uploads · ${n(allOld)} on older ones` : `${n(a.views)} total views on uploads from this period`) : `avg ${n(a.avg)} per upload`}</div></div>
+    <div class="kpi"><div class="lbl">Avg views at 24h</div><div class="val">${n(a.avg24)}</div><div class="note">${a.n24 ? `all brands · ${a.n24} uploads measured` : S.range === "today" ? "today's uploads aren't 24 hours old yet" : "no uploads measured yet"}</div></div>
     <div class="kpi live"><div class="lbl">Live right now</div><div class="val">${liveNow.length}</div><div class="note">${n(liveNow.reduce((s, v) => s + (v.cv || 0), 0))} watching</div></div>
   </section>
   ${liveNow.length ? `<section class="sec"><div class="sec-head"><h2>Live now</h2><span class="sub">sorted by people watching · scroll sideways</span></div><div class="livestrip">${liveNow.slice(0, 20).map(v => card(v)).join("")}</div></section>` : ""}
@@ -454,10 +492,11 @@ function vOverview() {
   <div class="grid2">
     <section class="sec"><div class="sec-head"><h2>Trending now</h2><span class="sub">fastest gaining views</span></div>${cards(trend, 8, true)}</section>
     <section class="sec"><div class="sec-head"><h2>Top performer by exam</h2><span class="sub">${esc(label)}</span></div>
-    ${table("examtop", [{ k: "e", h: "Exam" }, { k: "best", h: "Top brand", f: (x) => `<b style="color:${x === HOME ? "var(--home)" : "inherit"}">${esc(x)}</b>` }, { k: "bv", h: "Its views", num: 1, f: n }, { k: "n", h: "Uploads", num: 1 }, { k: "tt", h: "Top upload", f: (x, r) => r.top ? `<span title="${esc(r.top.t)}">${esc(r.top.t.slice(0, 42))}${r.top.t.length > 42 ? "…" : ""}</span>` : "" }],
+    ${table("examtop", [{ k: "e", h: "Exam" }, { k: "best", h: "Top brand", f: (x) => `<b style="color:${x === HOME ? "var(--home)" : "inherit"}">${esc(x)}</b>` }, { k: "bv", h: DB.hasGains ? "Its views gained" : "Its views", num: 1, f: n }, { k: "n", h: "Uploads", num: 1 }, { k: "tt", h: hasVGain() ? "Top upload by views gained" : "Top upload", f: (x, r) => r.top ? `<span title="${esc(r.top.t)}">${esc(r.top.t.slice(0, 42))}${r.top.t.length > 42 ? "…" : ""}</span>` : "" }],
       exams.map(x => ({ ...x, tt: x.top?.t || "", _click: x.top ? "vid:" + x.top.id : "" })), { sortKey: "bv" })}</section>
   </div>
-  <section class="sec"><div class="sec-head"><h2>Most viewed · ${esc(label)}</h2></div>${cards([...list].sort((x, y) => (y.v || 0) - (x.v || 0)), 12, true)}</section>`;
+  ${vg ? `<section class="sec"><div class="sec-head"><h2>Most views gained · ${esc(label)}</h2><span class="sub">any upload from the last 60 days, ranked by views it picked up ${S.range === "today" ? "today" : "yesterday"}</span></div>${cards(topGain, 12, true)}</section>` : ""}
+  <section class="sec"><div class="sec-head"><h2>Most viewed new uploads · ${esc(label)}</h2><span class="sub">uploads posted in this period, by total views so far</span></div>${cards([...list].sort((x, y) => (y.v || 0) - (x.v || 0)), 12, true)}</section>`;
 }
 
 function vBrands() {
@@ -648,9 +687,11 @@ function renderFresh() {
   fr.className = "fresh" + (mins > 40 ? " stale" : "");
   fr.innerHTML = `<span class="dot"></span>Updated ${ago(up)} · ${DB.channels.length} channels · ${DB.vids.length} uploads tracked`;
 }
+let VG_ON = false;   // per-upload gains usable for the current range (checked once per render)
 function render() {
   if (!DB) return;
   renderFresh();
+  VG_ON = hasVGain();
   const views = { overview: vOverview, brands: vBrands, exams: vExams, videos: vVideos, live: vLive, trending: vTrending, insights: vInsights, channels: vChannels };
   document.getElementById("main").innerHTML = views[S.tab]();
   document.getElementById("pageTitle").textContent = document.querySelector(`#tabs [data-t="${S.tab}"]`)?.textContent || "";

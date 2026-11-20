@@ -326,6 +326,7 @@ def main():
                          thumb=it["snippet"]["thumbnails"].get("default", {}).get("url"), handle=it["snippet"].get("customUrl"))
 
     today = ist_day(NOW)
+    yesterday = ist_day(NOW - timedelta(days=1))
     for c in channels:
         o = old_channels.get(c["id"], {})
         for k in ("subs", "views", "count", "thumb", "handle"):
@@ -352,6 +353,11 @@ def main():
                 delta = v["v"] if ist_day(parse(air_time(v))) == today else 0  # brand-new upload counts fully; old ones set a baseline
             if delta:
                 b = day.setdefault(v["c"], [0, 0]); b[0 if v["k"] == "video" else 1] += delta
+            # per-upload views gained: gt = today (IST), gy = yesterday, gd = the day gt belongs to
+            if v.get("gd") != today:
+                v["gy"] = v.get("gt", 0) if v.get("gd") == yesterday else 0
+                v["gt"], v["gd"] = 0, today
+            v["gt"] += delta
             if "v24" not in v and timedelta(hours=24) <= age(v) <= timedelta(hours=30) and v.get("ls") != "upcoming":
                 v["v24"] = v["v"]
         a = age(v)
@@ -433,13 +439,14 @@ def main():
             print("telegram:", e)
 
     # 7) save
-    lean = ("id", "c", "k", "t", "p", "ss", "as", "ae", "ls", "d", "v", "l", "cm", "cv", "pv", "u", "v24", "g6")
+    lean = ("id", "c", "k", "t", "p", "ss", "as", "ae", "ls", "d", "v", "l", "cm", "cv", "pv", "u", "v24", "g6", "gt", "gy", "gd")
     out = [{k: v[k] for k in lean if v.get(k) is not None} for v in sorted(videos.values(), key=air_time, reverse=True)]
     qday = NOW.astimezone(timezone(timedelta(hours=-8))).strftime("%Y-%m-%d")  # API quota resets at Pacific midnight
     if meta.get("quota_day") != qday:
         meta["quota_day"], meta["quota_used"] = qday, 0
     meta["quota_used"] = meta.get("quota_used", 0) + quota
-    meta.update(updated=NOW_ISO, api=bool(KEY), videos=len(out), gains_since=meta.get("gains_since") or today)
+    meta.update(updated=NOW_ISO, api=bool(KEY), videos=len(out), gains_since=meta.get("gains_since") or today,
+                vgains_since=meta.get("vgains_since") or today)  # first (partial) day of per-upload gains
     save("channels.json", {"channels": channels})
     save("videos.json", {"videos": out})
     save("daily.json", daily)
