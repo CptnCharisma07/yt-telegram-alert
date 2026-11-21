@@ -389,7 +389,9 @@ def main():
         if not v or vid in sent:
             continue
         sent[vid] = NOW_ISO
-        if first_alert_run or (NOW - parse(v["p"]) > ALERT_MAX_AGE and age(v) > ALERT_MAX_AGE):
+        # a channel just added to channels.csv: record its existing uploads silently instead of flooding Telegram
+        newly_added = bool(old_channels) and v["c"] not in old_channels
+        if first_alert_run or newly_added or (NOW - parse(v["p"]) > ALERT_MAX_AGE and age(v) > ALERT_MAX_AGE):
             continue
         if not KEY and v["k"] == "live":
             st, ss = scrape_live(vid)
