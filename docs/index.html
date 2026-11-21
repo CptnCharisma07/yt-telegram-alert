@@ -13,7 +13,7 @@
 :root {
   --bg: #f2f4f8; --surface: #ffffff; --surface2: #eef1f6; --fg: #0f1b2d; --muted: #586579; --faint: #8592a6; --line: #e0e5ee;
   --accent: #3446d4; --accent-soft: #e9ecfc; --home: #e46c08; --home-soft: #fff1e3; --home-ink: #a64c00;
-  --live: #dc2f3d; --good: #11875a; --bad: #c4362b;
+  --live: #dc2f3d; --good: #11875a; --bad: #c4362b; --line-strong: #7d8aa0; --on-home: #1a1000;
   --side: #0e1726; --side-fg: #c3cddd; --side-muted: #7f8ca3; --side-on: #ffffff; --side-hi: #1b2740;
   --display: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif; --body: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
   --r: 12px; --shadow: 0 1px 2px rgba(15,27,45,.06), 0 4px 14px rgba(15,27,45,.05);
@@ -21,17 +21,37 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0a111d; --surface: #111a2a; --surface2: #172236; --fg: #e6ecf5; --muted: #98a5ba; --faint: #6f7d94; --line: #223049;
-  --accent: #8090ff; --accent-soft: #1b2445; --home: #ff9538; --home-soft: #33220f; --home-ink: #ffb46e; --live: #ff5866; --good: #3ccb8a; --bad: #ff7a6e;
+  --accent: #8090ff; --accent-soft: #1b2445; --home: #ff9538; --home-soft: #33220f; --home-ink: #ffb46e; --live: #ff5866; --good: #3ccb8a; --bad: #ff7a6e; --line-strong: #5d6d88;
   --side: #070d17; --side-hi: #152035; --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #0a111d; --surface: #111a2a; --surface2: #172236; --fg: #e6ecf5; --muted: #98a5ba; --faint: #6f7d94; --line: #223049;
-  --accent: #8090ff; --accent-soft: #1b2445; --home: #ff9538; --home-soft: #33220f; --home-ink: #ffb46e; --live: #ff5866; --good: #3ccb8a; --bad: #ff7a6e;
+  --accent: #8090ff; --accent-soft: #1b2445; --home: #ff9538; --home-soft: #33220f; --home-ink: #ffb46e; --live: #ff5866; --good: #3ccb8a; --bad: #ff7a6e; --line-strong: #5d6d88;
   --side: #070d17; --side-hi: #152035; --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark }
 * { box-sizing: border-box }
 html, body { margin: 0 }
 body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--body) }
 a { color: var(--accent) }
 [hidden] { display: none !important }
+/* accessibility helpers */
+.sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0 }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 100; background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-weight: 600; text-decoration: none }
+.skip:focus { top: max(12px, env(safe-area-inset-top, 0px)) }
+.thbtn { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; border-radius: 4px }
+.thbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.rowbtn { all: unset; cursor: pointer; border-radius: 4px }
+.rowbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+tbody tr:focus-within td { background: var(--accent-soft) }
+/* decluttering: show-more bars, compact pickers, collapsible sections */
+.morebar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: center; padding-top: 2px }
+.picker { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.picker select { max-width: 100%; border-style: dashed }
+details.fold { min-width: 0 }
+details.fold > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 4px 0; border-radius: 6px }
+details.fold > summary::-webkit-details-marker { display: none }
+details.fold > summary h2::before { content: "\25B8"; display: inline-block; margin-right: 8px; color: var(--muted); transition: transform .15s }
+details.fold[open] > summary h2::before { transform: rotate(90deg) }
+details.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+details.fold > .fold-body { display: flex; flex-direction: column; gap: 12px; margin-top: 12px }
 button { font-family: inherit }
 button:focus-visible, select:focus-visible, input:focus-visible, .card:focus-visible, tr.click:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 
@@ -58,12 +78,12 @@ nav.tabs button.on { background: var(--side-hi); color: var(--side-on); box-shad
 .content { min-width: 0; display: flex; flex-direction: column }
 .filters { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
   padding: max(12px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) 12px 24px; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center }
-.filters .ttl { font: 700 1.15rem var(--display); margin-right: auto; letter-spacing: -.01em; min-width: 0 }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); overflow-x: auto; max-width: 100%; scrollbar-width: none; padding: 2px; gap: 2px }
+.filters .ttl { margin: 0; font: 700 1.15rem var(--display); margin-right: auto; letter-spacing: -.01em; min-width: 0 }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--surface); overflow-x: auto; max-width: 100%; scrollbar-width: none; padding: 2px; gap: 2px }
 .seg button { flex: none; border: 0; background: transparent; color: var(--muted); font: 500 .82rem var(--body); padding: 6px 11px; border-radius: 7px; cursor: pointer; min-height: 32px }
 .seg button:hover { color: var(--fg) }
 .seg button.on { background: var(--fg); color: var(--bg) }
-select, input[type=date], input[type=search] { font: .85rem var(--body); padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--fg); min-height: 36px }
+select, input[type=date], input[type=search] { font: .85rem var(--body); padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--surface); color: var(--fg); min-height: 36px }
 input[type=search] { min-width: 0; flex: 1 1 160px; max-width: 240px }
 .custom { display: inline-flex; gap: 6px; align-items: center }
 main { padding: 22px 24px 56px; padding-right: max(24px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 26px; max-width: 1480px; width: 100% }
@@ -78,7 +98,7 @@ main { padding: 22px 24px 56px; padding-right: max(24px, env(safe-area-inset-rig
   nav.tabs button { padding: 7px 10px; min-height: 36px }
   nav.tabs button.on { box-shadow: inset 0 -2px 0 var(--home) }
   .filters { top: 0; position: relative; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
-  .filters .ttl { display: none }
+  .filters .ttl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0) }
   main { padding: 18px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)) }
 }
 
@@ -147,7 +167,7 @@ tbody tr.click { cursor: pointer }
 .bar { display: inline-block; height: 6px; border-radius: 3px; background: var(--accent); vertical-align: middle; margin-left: 8px; opacity: .85 }
 tr.home .bar { background: var(--home) }
 .rk { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--surface2); font: 600 .72rem var(--mono); margin-right: 8px; color: var(--muted) }
-tr.home .rk { background: var(--home); color: #fff }
+tr.home .rk { background: var(--home); color: var(--on-home) }
 .tbl-tools { display: flex; gap: 8px; align-items: center }
 .linkbtn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 5px 10px; font-size: .8rem; cursor: pointer; min-height: 32px }
 .linkbtn:hover { border-color: var(--accent) }
@@ -158,7 +178,7 @@ tr.home .rk { background: var(--home); color: #fff }
 .chip:hover { border-color: var(--accent) }
 .chip.on { background: var(--fg); border-color: var(--fg); color: var(--bg) }
 .chip.homechip { border-color: color-mix(in srgb, var(--home) 55%, transparent) }
-.chip.homechip.on { background: var(--home); border-color: var(--home); color: #fff }
+.chip.homechip.on { background: var(--home); border-color: var(--home); color: var(--on-home) }
 .chip small { opacity: .6; margin-left: 5px; font-family: var(--mono); font-size: .74rem }
 
 /* ---- video cards ---- */
@@ -173,7 +193,7 @@ tr.home .rk { background: var(--home); color: #fff }
 .badge { position: absolute; z-index: 1; font: 600 .7rem var(--body); padding: 3px 7px; border-radius: 5px; color: #fff; background: rgba(8,12,20,.78) }
 .badge.dur { right: 7px; bottom: 7px; font-family: var(--mono) }
 .badge.kind { left: 7px; top: 7px }
-.badge.live { background: var(--live) }
+.badge.live { background: #c81e2c }
 .badge.up { background: #5b45d6 }
 .badge.rank { right: 7px; top: 7px; background: var(--fg); color: var(--bg); font-family: var(--mono) }
 .card .body { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 }
@@ -217,47 +237,48 @@ dialog::backdrop { background: rgba(6,10,18,.62); backdrop-filter: blur(2px) }
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <div class="app">
   <aside class="side">
-    <div class="logo"><span class="mark"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 0l10 6-10 6z"/></svg></span><div><b>Exam Tube Tracker</b><small>UPSC · State PCS on YouTube</small></div></div>
+    <div class="logo"><span class="mark"><svg viewBox="0 0 10 12" aria-hidden="true"><path d="M0 0l10 6-10 6z"/></svg></span><div><span style="display:block;font:700 1rem/1.15 var(--display);color:var(--side-on)">Exam Tube Tracker</span><small>UPSC · State PCS on YouTube</small></div></div>
     <nav class="tabs" id="tabs" aria-label="Sections">
-      <button data-t="overview" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</button>
-      <button data-t="brands"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Brands</button>
-      <button data-t="exams"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Exams</button>
-      <button data-t="videos"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Videos</button>
-      <button data-t="live"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 000 11.4M17.7 6.3a8 8 0 010 11.4"/></svg>Live</button>
-      <button data-t="trending"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Trending</button>
-      <button data-t="insights"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></svg>Insights</button>
-      <button data-t="channels"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="8" cy="18" r="1"/></svg>Channels</button>
+      <button data-t="overview" class="on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</button>
+      <button data-t="brands"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Brands</button>
+      <button data-t="exams"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Exams</button>
+      <button data-t="videos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Videos</button>
+      <button data-t="live"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 000 11.4M17.7 6.3a8 8 0 010 11.4"/></svg>Live</button>
+      <button data-t="trending"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Trending</button>
+      <button data-t="insights"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/></svg>Insights</button>
+      <button data-t="channels"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="1"/><circle cx="8" cy="12" r="1"/><circle cx="8" cy="18" r="1"/></svg>Channels</button>
     </nav>
     <div class="foot"><span class="fresh" id="fresh"><span class="dot"></span>Loading…</span><span class="home-key"><i></i>Drishti = your brand</span></div>
   </aside>
   <div class="content">
     <header class="filters">
-      <span class="ttl" id="pageTitle">Overview</span>
+      <h1 class="ttl" id="pageTitle">Overview</h1>
       <div class="seg" id="range" role="group" aria-label="Date range">
-        <button data-v="today" class="on">Today</button><button data-v="yesterday">Yesterday</button><button data-v="7d">7 days</button><button data-v="month">This month</button><button data-v="30d">30 days</button><button data-v="custom">Custom</button>
+        <button data-v="today" class="on" aria-pressed="true">Today</button><button data-v="yesterday" aria-pressed="false">Yesterday</button><button data-v="7d" aria-pressed="false">7 days</button><button data-v="month" aria-pressed="false">This month</button><button data-v="30d" aria-pressed="false">30 days</button><button data-v="custom" aria-pressed="false">Custom</button>
       </div>
       <span class="custom" id="customBox" hidden><input type="date" id="from" aria-label="From date"><span class="sub">to</span><input type="date" id="to" aria-label="To date"></span>
       <div class="seg" id="kind" role="group" aria-label="Type">
-        <button data-v="all" class="on">All</button><button data-v="live">● Lives</button><button data-v="video">▶ Videos</button>
+        <button data-v="all" class="on" aria-pressed="true">All</button><button data-v="live" aria-pressed="false"><span aria-hidden="true">●</span> Lives</button><button data-v="video" aria-pressed="false"><span aria-hidden="true">▶</span> Videos</button>
       </div>
       <select id="brandSel" aria-label="Brand filter"></select>
       <select id="examSel" aria-label="Exam filter"></select>
       <input type="search" id="q" placeholder="Search titles" aria-label="Search titles">
     </header>
-    <main id="main"><div class="empty">Loading data…</div></main>
+    <main id="main" tabindex="-1"><div class="empty">Loading data…</div></main>
   </div>
 </div>
 
-<dialog id="dlg"><div id="dlgBody"></div></dialog>
+<dialog id="dlg" aria-labelledby="dlgTitle"><div id="dlgBody"></div></dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 "use strict";
 const HOME = "Drishti";
 const IST_MS = 5.5 * 3600e3;
-const S = { range: "today", from: null, to: null, kind: "all", brand: "", exam: "", q: "", tab: "overview", pickBrand: HOME, pickChan: "", pickExam: "UPSC", sort: {} };
+const S = { range: "today", from: null, to: null, kind: "all", brand: "", exam: "", q: "", tab: "overview", pickBrand: HOME, pickChan: "", more: {}, pickExam: "UPSC", sort: {} };
 let DB = null, HIST = null, DETAILS = null, charts = [], lastUpdated = null;
 
 // ---------- data loading ----------
@@ -385,19 +406,32 @@ const sumG = (g, pred) => { let s = 0; for (const [cid, x] of g) if (pred(DB.chM
 function card(v, rank) {
   const kind = isLiveNow(v) ? `<span class="badge kind live">● LIVE${v.cv ? " · " + n(v.cv) : ""}</span>` : isUpcoming(v) ? `<span class="badge kind up">⏰ ${esc(fmtIST(v.at))}</span>` : v.k === "live" ? `<span class="badge kind">Live</span>` : "";
   const hot = v.mult && v.mult >= 2 && !isUpcoming(v) ? `<span class="pill hot">${v.mult.toFixed(1)}× usual</span>` : "";
-  return `<div class="card${v.brand === HOME ? " home" : ""}" tabindex="0" data-vid="${v.id}">
+  return `<div class="card${v.brand === HOME ? " home" : ""}" tabindex="0" role="button" aria-label="${esc(v.t)}. ${esc(v.brand)}, ${esc(v.ch.name)}. ${n(v.v)} views${isLiveNow(v) ? ", live now" : isUpcoming(v) ? ", scheduled" : v.k === "live" ? ", live stream" : ""}. Open details" data-vid="${v.id}">
     <div class="thumb"><img loading="lazy" src="https://i.ytimg.com/vi/${v.id}/${isLiveNow(v) || isUpcoming(v) ? "hqdefault" : "mqdefault"}.jpg" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://i.ytimg.com/vi/${v.id}/hqdefault.jpg'}" alt="">${kind}${v.d && !isLiveNow(v) ? `<span class="badge dur">${dur(v.d)}</span>` : ""}${rank ? `<span class="badge rank">#${rank}</span>` : ""}</div>
     <div class="body"><div class="t">${esc(v.t)}</div><div class="ch"><b>${esc(v.brand)}</b> · ${esc(v.ch.name)}</div>
-    <div class="stats"><span title="Total views">👁 <b>${n(v.v)}</b></span>${(() => { const g = VG_ON ? vGain(v) : 0; return g ? `<span title="Views gained ${S.range === "today" ? "today" : "yesterday"}" style="color:var(--good)">▲ <b style="color:inherit">${n(g)}</b> ${S.range === "today" ? "today" : "yday"}</span>` : ""; })()}<span title="Likes">👍 <b>${n(v.l)}</b></span><span title="Comments">💬 <b>${n(v.cm)}</b></span><span>${ago(v.at)}</span></div>${hot}</div></div>`;
+    <div class="stats" aria-hidden="true"><span title="Total views">👁 <b>${n(v.v)}</b></span>${(() => { const g = VG_ON ? vGain(v) : 0; return g ? `<span title="Views gained ${S.range === "today" ? "today" : "yesterday"}" style="color:var(--good)">▲ <b style="color:inherit">${n(g)}</b> ${S.range === "today" ? "today" : "yday"}</span>` : ""; })()}<span title="Likes">👍 <b>${n(v.l)}</b></span><span title="Comments">💬 <b>${n(v.cm)}</b></span><span>${ago(v.at)}</span></div>${hot}</div></div>`;
 }
-function cards(list, limit = 48, ranked = false) { return list.length ? `<div class="cards">${list.slice(0, limit).map((v, i) => card(v, ranked ? i + 1 : 0)).join("")}</div>` : `<div class="empty">Nothing in this range with these filters.</div>`; }
+// Card grids start small (2 rows) and grow with "Show more"; ids are stable per tab because render order is fixed
+let SEC = 0;
+function moreBar(id, shown, total, step) {
+  if (total <= step) return "";
+  return `<div class="morebar">${shown < total ? `<button type="button" class="linkbtn" data-more="${id}" data-step="${step}">Show ${Math.min(step, total - shown)} more</button>` : ""}<span class="sub">Showing ${shown} of ${total}</span>${shown > step ? `<button type="button" class="linkbtn" data-less="${id}">Show less</button>` : ""}</div>`;
+}
+function cards(list, limit = 48, ranked = false) {
+  if (!list.length) return `<div class="empty">Nothing in this range with these filters.</div>`;
+  const id = S.tab + ":c" + (SEC++), step = S.tab === "videos" ? 24 : Math.min(limit, 8), shown = Math.min(list.length, S.more[id] || step);
+  return `<div class="cards">${list.slice(0, shown).map((v, i) => card(v, ranked ? i + 1 : 0)).join("")}</div>${moreBar(id, shown, list.length, step)}`;
+}
 
 function table(id, cols, rows, opts = {}) {
   const st = S.sort[id] || { k: opts.sortKey || cols.find(c => c.num)?.k, d: -1 };
   rows = [...rows].sort((a, b) => { const x = a[st.k], y = b[st.k]; return (typeof x === "string" ? x.localeCompare(y) : (x ?? -1) - (y ?? -1)) * st.d; });
   const max = {}; cols.forEach(c => { if (c.bar) max[c.k] = Math.max(1, ...rows.map(r => r[c.k] || 0)); });
-  return `<div class="tablewrap"><table data-tid="${id}"><thead><tr>${cols.map(c => `<th class="${c.num ? "" : "l"} ${st.k === c.k ? "sorted" : ""}" data-k="${c.k}" title="${esc(COLTIP[c.k] || "Click to sort")}">${c.h}</th>`).join("")}</tr></thead><tbody>${rows.map(r =>
-    `<tr class="${r._home ? "home" : ""} ${r._sel ? "sel" : ""} ${r._click ? "click" : ""}" ${r._click ? `data-click="${esc(r._click)}"` : ""}>${cols.map(c => `<td class="${c.num ? "" : "l"}">${c.f ? c.f(r[c.k], r) : esc(r[c.k])}${c.bar ? `<span class="bar" style="width:${Math.round(40 * (r[c.k] || 0) / max[c.k])}px"></span>` : ""}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const total = rows.length, lim = opts.limit ?? 12, all = S.more["t:" + id] || total <= lim + 2;
+  if (!all) { const top = rows.slice(0, lim), pin = rows.slice(lim).filter(r => r._home || r._sel); rows = top.concat(pin); }
+  const bar = total > lim + 2 ? `<div class="morebar"><span class="sub">${all ? `All ${total} rows` : `Top ${lim} of ${total}${rows.length > lim ? " · Drishti pinned" : ""}`}</span><button type="button" class="linkbtn" data-tmore="${id}">${all ? `Show top ${lim}` : `Show all ${total}`}</button></div>` : "";
+  return `<div class="tablewrap"><table data-tid="${id}"><thead><tr>${cols.map(c => `<th scope="col" class="${c.num ? "" : "l"} ${st.k === c.k ? "sorted" : ""}" data-k="${c.k}" title="${esc(COLTIP[c.k] || "Sort by this column")}" ${st.k === c.k ? `aria-sort="${st.d < 0 ? "descending" : "ascending"}"` : ""}><button type="button" class="thbtn">${c.h}</button></th>`).join("")}</tr></thead><tbody>${rows.map(r =>
+    `<tr class="${r._home ? "home" : ""} ${r._sel ? "sel" : ""} ${r._click ? "click" : ""}" ${r._click ? `data-click="${esc(r._click)}"` : ""}>${cols.map((c, ci) => `<td class="${c.num ? "" : "l"}">${ci === 0 && r._click ? `<button type="button" class="rowbtn" aria-label="Open ${esc(String(r[c.k] ?? ""))}">` : ""}${c.f ? c.f(r[c.k], r) : esc(r[c.k])}${ci === 0 && r._click ? "</button>" : ""}${c.bar ? `<span class="bar" style="width:${Math.round(40 * (r[c.k] || 0) / max[c.k])}px"></span>` : ""}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${bar}`;
 }
 const COLTIP = {
   gained: "New views picked up during the selected days by every tracked upload (last 60 days), old and new",
@@ -421,6 +455,13 @@ function brandRows(list, chFilter = chOk) {
   const g = groupBy(list, v => v.brand), G = gains(chFilter), total = [...G.values()].reduce((s, x) => s + x, 0);
   return DB.brands.map(b => { const a = agg(g.get(b) || []), gained = sumG(G, c => c.brand === b);
     return { name: b, chs: DB.channels.filter(c => c.brand === b && chFilter(c)).length, ...a, gained, gshare: total ? gained / total : null, _home: b === HOME, _click: "brand:" + b }; });
+}
+// Compact brand picker: Drishti + most active brands as chips, the rest in a dropdown
+function brandPicker(b, counts) {
+  const n_ = x => (counts.get(x) || []).length, act = [...DB.brands].sort((x, y) => n_(y) - n_(x));
+  const top = [HOME, ...act.filter(x => x !== HOME)].slice(0, 8); if (!top.includes(b)) top.push(b);
+  const rest = DB.brands.filter(x => !top.includes(x)).sort((x, y) => x.localeCompare(y));
+  return `<div class="picker"><div class="chips">${top.map(x => `<button type="button" class="chip ${x === b ? "on" : ""} ${x === HOME ? "homechip" : ""}" data-brand="${esc(x)}" aria-pressed="${x === b}">${esc(x)}<small>${n_(x)}</small></button>`).join("")}</div>${rest.length ? `<select data-brandsel aria-label="More brands"><option value="">+ ${rest.length} more brands…</option>${rest.map(x => `<option value="${esc(x)}">${esc(x)} (${n_(x)})</option>`).join("")}</select>` : ""}</div>`;
 }
 const mainKey = () => DB.hasGains ? "gained" : "views";
 const gainsNote = () => DB.hasGains ? `Views gained = new views on every upload during these days (counting since ${esc(DB.meta.gains_since || "the tracker started")}). Avg @24h compares uploads at the same age.` : `Views gained starts counting after the first runs; until then brands are ranked by views on uploads from this period.`;
@@ -496,7 +537,7 @@ function vOverview() {
       exams.map(x => ({ ...x, tt: x.top?.t || "", _click: x.top ? "vid:" + x.top.id : "" })), { sortKey: "bv" })}</section>
   </div>
   ${vg ? `<section class="sec"><div class="sec-head"><h2>Most views gained · ${esc(label)}</h2><span class="sub">any upload from the last 60 days, ranked by views it picked up ${S.range === "today" ? "today" : "yesterday"}</span></div>${cards(topGain, 12, true)}</section>` : ""}
-  <section class="sec"><div class="sec-head"><h2>Most viewed new uploads · ${esc(label)}</h2><span class="sub">uploads posted in this period, by total views so far</span></div>${cards([...list].sort((x, y) => (y.v || 0) - (x.v || 0)), 12, true)}</section>`;
+  <details class="fold sec"><summary><h2>Most viewed new uploads · ${esc(label)}</h2><span class="sub">uploads posted in this period, by total views so far</span></summary><div class="fold-body">${cards([...list].sort((x, y) => (y.v || 0) - (x.v || 0)), 12, true)}</div></details>`;
 }
 
 function vBrands() {
@@ -518,9 +559,11 @@ function vBrands() {
   chs.forEach(c => { c.gshare = totalBrandG ? c.gained / totalBrandG : null; c.top = c.top ? c.top.t : ""; c._click = "pchan:" + c._click.slice(5); c._sel = pc && c._click === "pchan:" + pc.id; c.nVid = c.nv; });
   const chCount = groupBy(mine, v => v.c);
   const topBy = (list, k) => [...list].filter(v => v.k === k).sort((x, y) => (y.v || 0) - (x.v || 0));
-  return `<section class="sec"><div class="chips">${DB.brands.map(x => `<button class="chip ${x === b ? "on" : ""} ${x === HOME ? "homechip" : ""}" data-brand="${esc(x)}">${esc(x)}<small>${(counts.get(x) || []).length}</small></button>`).join("")}</div></section>
+  const showAllCh = S.more["pchan"] || brandChs.length <= 7, chTop = [...brandChs].sort((x, y) => (chCount.get(y.id) || []).length - (chCount.get(x.id) || []).length);
+  let chShown = showAllCh ? brandChs : chTop.slice(0, 6); if (pc && !chShown.includes(pc)) chShown = chShown.concat(pc);
+  return `<section class="sec" aria-label="Choose a brand">${brandPicker(b, counts)}</section>
   <section class="sec"><div class="sec-head"><h2>${esc(b)} channels</h2><span class="sub">pick a channel to see only its numbers and uploads</span></div>
-    <div class="chips"><button class="chip ${!pc ? "on" : ""}" data-pchan="">All ${brandChs.length} channels<small>${mine.length}</small></button>${brandChs.map(c => `<button class="chip ${pc && pc.id === c.id ? "on" : ""}" data-pchan="${c.id}">${esc(c.name)}<small>${(chCount.get(c.id) || []).length}</small></button>`).join("")}</div></section>
+    <div class="chips"><button class="chip ${!pc ? "on" : ""}" data-pchan="">All ${brandChs.length} channels<small>${mine.length}</small></button>${chShown.map(c => `<button class="chip ${pc && pc.id === c.id ? "on" : ""}" data-pchan="${c.id}">${esc(c.name)}<small>${(chCount.get(c.id) || []).length}</small></button>`).join("")}${brandChs.length > 7 ? `<button type="button" class="linkbtn" data-chmore>${showAllCh ? "Show fewer channels" : `+ ${brandChs.length - chShown.length} more channels`}</button>` : ""}</div></section>
   <section class="kpis" id="scopeTop">
     <div class="kpi ${b === HOME ? "home" : ""}"><div class="lbl">${scopeName} · uploads</div><div class="val">${sa.n}</div><div class="note">${sa.nv} videos · ${sa.nl} lives · ${sa.liveHrs.toFixed(1)} live hrs</div></div>
     <div class="kpi"><div class="lbl">${DB.hasGains ? "Views gained" : "Views on uploads"}</div><div class="val">${n(DB.hasGains ? scopeG : sa.views)}</div><div class="note">${pc && DB.hasGains && totalBrandG ? pct(scopeG / totalBrandG) + " of " + esc(b) + " · " : ""}@24h ${n(sa.avg24)} per upload</div></div>
@@ -534,7 +577,7 @@ function vBrands() {
       { k: "avg24", h: "Avg @24h", num: 1, f: n }, { k: "avg", h: "Avg views", num: 1, f: n }, { k: "med", h: "Median", num: 1, f: n }, { k: "likes", h: "Likes", num: 1, f: n }, { k: "cm", h: "Comments", num: 1, f: n },
       { k: "eng", h: "Eng", num: 1, f: pct }, { k: "top", h: "Top upload", f: x => `<span title="${esc(x)}">${esc(x.slice(0, 40))}${x.length > 40 ? "…" : ""}</span>` }, { k: "last", h: "Last upload", num: 1, f: x => x ? ago(x) : "–" }], chs, { sortKey: mainKey() === "gained" ? "gained" : "n" })}
   </section>
-  ${DB.hasGains && dayKeys().length > 1 ? `<section class="sec"><div class="sec-head"><h2>Views gained per day, by channel</h2><span class="sub">${esc(b)} · ${esc(rangeBounds()[2])}</span></div><div class="box"><div class="chartbox" style="height:260px"><canvas id="brandChart"></canvas></div></div></section>` : ""}
+  ${DB.hasGains && dayKeys().length > 1 ? `<section class="sec"><div class="sec-head"><h2>Views gained per day, by channel</h2><span class="sub">${esc(b)} · ${esc(rangeBounds()[2])}</span></div><div class="box"><div class="chartbox" style="height:260px"><canvas id="brandChart" role="img" aria-label="Stacked bar chart of views gained per day for each channel of this brand"></canvas></div></div></section>` : ""}
   ${!pc ? `<section class="sec"><div class="sec-head"><h2>${b === HOME ? "You vs average competitor" : `${esc(b)} vs ${HOME}`}</h2></div>
       <div class="box" style="max-width:560px"><div class="cmp"><div class="h">Per brand</div><div class="h">${esc(b)}</div><div class="h">${b === HOME ? "Avg other brand" : HOME}</div>
       ${(() => { const y = b === HOME ? { n: oa.n / nb, views: oa.views / nb, avg: oa.avg, med: oa.med, eng: oa.eng, nl: oa.nl / nb, avg24: oa.avg24, gained: gOth / nbr } : { ...homeA, gained: gHome };
@@ -542,7 +585,7 @@ function vBrands() {
       </div></div></section>` : ""}
   ${S.kind !== "live" ? `<section class="sec"><div class="sec-head"><h2>🎥 ${scopeName} · top videos</h2></div>${cards(topBy(scope, "video"), 12, true)}</section>` : ""}
   ${S.kind !== "video" ? `<section class="sec"><div class="sec-head"><h2>🔴 ${scopeName} · top lives</h2></div>${cards(topBy(scope, "live"), 12, true)}</section>` : ""}
-  <section class="sec"><div class="sec-head"><h2>${scopeName} · latest</h2></div>${cards([...scope].sort((x, y) => y.at - x.at), 24)}</section>`;
+  <details class="fold sec"><summary><h2>${scopeName} · latest uploads</h2><span class="sub">newest first</span></summary><div class="fold-body">${cards([...scope].sort((x, y) => y.at - x.at), 24)}</div></details>`;
 }
 function drawBrandChart() {
   const el = document.getElementById("brandChart"); if (!el || !window.Chart) return;
@@ -564,7 +607,7 @@ function vExams() {
   <section class="sec"><div class="sec-head"><h2>${esc(e)} · brand leaderboard</h2><span class="sub">${DB.channels.filter(c => c.exams.includes(e)).length} channels cover ${esc(e)}</span></div>
   ${rows.length ? table("examb", brandCols, rows, { sortKey: mainKey() }) : `<div class="empty">No ${esc(e)} uploads in this range.</div>`}</section>
   <section class="sec"><div class="sec-head"><h2>${esc(e)} · top uploads</h2></div>${cards([...mine].sort((x, y) => (y.v || 0) - (x.v || 0)), 16, true)}</section>
-  <section class="sec"><div class="sec-head"><h2>${esc(e)} · latest</h2></div>${cards([...mine].sort((x, y) => y.at - x.at), 24)}</section>`;
+  <details class="fold sec"><summary><h2>${esc(e)} · latest uploads</h2><span class="sub">newest first</span></summary><div class="fold-body">${cards([...mine].sort((x, y) => y.at - x.at), 24)}</div></details>`;
 }
 
 function vVideos() {
@@ -583,7 +626,7 @@ function vLive() {
   const rows = DB.brands.map(b => { const l = g.get(b) || [], a = agg(l); return { name: b, n: l.length, hrs: a.liveHrs, views: a.views, avg: a.avg, peak: Math.max(0, ...l.map(v => v.pv || 0)), _home: b === HOME, _click: "brand:" + b }; }).filter(r => r.n);
   return `<section class="sec"><div class="sec-head"><h2>🔴 Live now · ${now.length}</h2></div>${now.length ? cards(now, 30) : `<div class="empty">No one is live right now.</div>`}</section>
   <section class="sec"><div class="sec-head"><h2>⏰ Upcoming schedule</h2><span class="sub">times in IST</span></div>
-  ${up.length ? table("up", [{ k: "when", h: "Starts" }, { k: "in", h: "In", num: 1 }, { k: "brand", h: "Brand" }, { k: "chn", h: "Channel" }, { k: "t", h: "Title", f: x => esc(x.slice(0, 70)) }], up.map(v => ({ when: fmtIST(v.at), in: until(v.at), _t: v.at.getTime(), brand: v.brand, chn: v.ch.name, t: v.t, _home: v.brand === HOME, _click: "vid:" + v.id })), { sortKey: "_t" }) : `<div class="empty">No scheduled lives found.</div>`}</section>
+  ${up.length ? table("up", [{ k: "when", h: "Starts" }, { k: "in", h: "In", num: 1 }, { k: "brand", h: "Brand" }, { k: "chn", h: "Channel" }, { k: "t", h: "Title", f: x => esc(x.slice(0, 70)) }], up.map(v => ({ when: fmtIST(v.at), in: until(v.at), _t: v.at.getTime(), brand: v.brand, chn: v.ch.name, t: v.t, _home: v.brand === HOME, _click: "vid:" + v.id })), { sortKey: "_t", limit: 10 }) : `<div class="empty">No scheduled lives found.</div>`}</section>
   <section class="sec"><div class="sec-head"><h2>Live performance by brand</h2><span class="sub">${esc(rangeBounds()[2])}</span></div>
   ${table("liveb", [{ k: "name", h: "Brand", f: (x, r) => `<b>${esc(x)}</b>` }, { k: "n", h: "Lives", num: 1 }, { k: "hrs", h: "Live hours", num: 1, f: x => x.toFixed(1) }, { k: "views", h: "Views", num: 1, f: n, bar: 1 }, { k: "avg", h: "Avg views", num: 1, f: n }, { k: "peak", h: "Peak watching", num: 1, f: x => x ? n(x) : "–" }], rows, { sortKey: "views" })}</section>
   <section class="sec"><div class="sec-head"><h2>Best lives · ${esc(rangeBounds()[2])}</h2></div>${cards(past, 24, true)}</section>`;
@@ -598,7 +641,7 @@ function vTrending() {
   const list = base({ anyTime: true }).filter(v => Date.now() - v.at < 7 * 864e5), t = trendingList(list);
   const out = list.filter(v => v.mult && v.mult >= 2 && Date.now() - v.at > 6 * 36e5).sort((x, y) => y.mult - x.mult);
   return `<section class="sec"><div class="sec-head"><h2>Trending now</h2><span class="sub">uploads from the last 7 days gaining views fastest (views per hour)</span></div>
-  ${t.length ? `<div class="cards">${t.slice(0, 24).map((v, i) => card(v, i + 1).replace('<div class="stats">', `<div class="stats"><span>⚡ <b>${n(v.vel)}/h</b></span>`)).join("")}</div>` : `<div class="empty">No recent uploads with these filters.</div>`}</section>
+  ${t.length ? `<div class="cards">${t.slice(0, Math.min(t.length, S.more["trend"] || 8)).map((v, i) => card(v, i + 1).replace('<div class="stats" aria-hidden="true">', `<div class="stats" aria-hidden="true"><span>⚡ <b>${n(v.vel)}/h</b></span>`).replace('. Open details"', `, gaining ${n(v.vel)} views per hour. Open details"`)).join("")}</div>${moreBar("trend", Math.min(t.length, S.more["trend"] || 8), t.length, 8)}` : `<div class="empty">No recent uploads with these filters.</div>`}</section>
   <section class="sec"><div class="sec-head"><h2>Breakout uploads</h2><span class="sub">at least 2× the channel's usual views · last 7 days</span></div>${cards(out, 24, true)}</section>`;
 }
 
@@ -613,20 +656,20 @@ function vInsights() {
   const heat = (list) => { const g = Array.from({ length: 7 }, () => Array(24).fill(0)); for (const v of list) { const d = istDate(v.at); g[(d.getUTCDay() + 6) % 7][d.getUTCHours()]++; } return g; };
   const hm = heat(mine), ha = heat(others), mx = Math.max(1, ...hm.flat()), mxa = Math.max(1, ...ha.flat());
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const heatHTML = (g, m, col) => `<div style="overflow-x:auto"><div class="heat"><div></div>${Array.from({ length: 24 }, (_, h) => `<div class="lab">${h % 3 ? "" : h}</div>`).join("")}${g.map((r, i) => `<div class="lab">${days[i]}</div>` + r.map((c, h) => `<div title="${days[i]} ${h}:00 IST · ${c} uploads" style="background:${c ? `color-mix(in srgb, ${col} ${Math.round(15 + 85 * c / m)}%, transparent)` : "var(--surface2)"}"></div>`).join("")).join("")}</div></div>`;
+  const heatHTML = (g, m, col) => { let best = [0, 0, 0]; g.forEach((r, i) => r.forEach((c, h) => { if (c > best[0]) best = [c, i, h]; })); return `<div style="overflow-x:auto" role="img" aria-label="Upload timing heatmap. Busiest slot: ${days[best[1]]} ${best[2]}:00 IST with ${best[0]} uploads."><div class="heat" aria-hidden="true"><div></div>${Array.from({ length: 24 }, (_, h) => `<div class="lab">${h % 3 ? "" : h}</div>`).join("")}${g.map((r, i) => `<div class="lab">${days[i]}</div>` + r.map((c, h) => `<div title="${days[i]} ${h}:00 IST · ${c} uploads" style="background:${c ? `color-mix(in srgb, ${col} ${Math.round(15 + 85 * c / m)}%, transparent)` : "var(--surface2)"}"></div>`).join("")).join("")}</div></div>`; };
   const launches = all.filter(v => LAUNCH.test(v.t)).sort((x, y) => y.at - x.at);
   const durRows = DB.brands.map(x => { const l = all.filter(v => v.brand === x && v.d); return { name: x, n: l.length, avgd: l.length ? l.reduce((s, v) => s + v.d, 0) / l.length : 0, vids: l.filter(v => v.k === "video").length, lives: l.filter(v => v.k === "live").length, _home: x === HOME }; }).filter(r => r.n);
-  return `<section class="sec"><div class="sec-head"><h2>Compare a brand with everyone else</h2></div><div class="chips">${DB.brands.map(x => `<button class="chip ${x === b ? "on" : ""} ${x === HOME ? "homechip" : ""}" data-brand="${esc(x)}">${esc(x)}</button>`).join("")}</div></section>
+  return `<section class="sec"><div class="sec-head"><h2>Compare a brand with everyone else</h2></div>${brandPicker(b, groupBy(all, v => v.brand))}</section>
   <div class="grid2">
     <section class="sec"><div class="sec-head"><h2>Topics others are covering</h2><span class="sub">title keywords · ${esc(rangeBounds()[2])}</span></div>
       <div class="box"><div class="kw"><div class="h">Keyword</div><div class="h">Others</div><div class="h">${esc(b)}</div>${topOth.map(([w, c]) => `<div>${esc(w)}</div><div>${c}</div><div style="color:${kwMine.get(w) ? "var(--good)" : "var(--bad)"}">${kwMine.get(w) || 0}</div>`).join("") || "<div>Not enough uploads yet.</div><div></div><div></div>"}</div></div></section>
     <section class="sec"><div class="sec-head"><h2>Gaps for ${esc(b)}</h2><span class="sub">topics with 3+ uploads by others and none by ${esc(b)}</span></div>
       <div class="box"><div class="chips">${gaps.map(([w, c]) => `<button class="chip" data-q="${esc(w)}">${esc(w)}<small>${c}</small></button>`).join("") || `<span class="sub">No gaps in this range.</span>`}</div><p class="sub" style="margin:10px 0 0">Click a topic to search uploads about it.</p></div></section>
   </div>
-  <section class="sec"><div class="sec-head"><h2>When uploads go out (IST)</h2><span class="sub">count of uploads by weekday and hour</span></div>
-    <div class="grid2"><div class="box"><div class="sub" style="margin-bottom:6px"><b>${esc(b)}</b></div>${heatHTML(hm, mx, "var(--home)")}</div><div class="box"><div class="sub" style="margin-bottom:6px"><b>Everyone else</b></div>${heatHTML(ha, mxa, "var(--accent)")}</div></div></section>
-  <section class="sec"><div class="sec-head"><h2>Course and batch launches</h2><span class="sub">titles mentioning batch, launch, admission, foundation, course, offer… · ${launches.length} found</span></div>${cards(launches, 24)}</section>
-  ${durRows.length ? `<section class="sec"><div class="sec-head"><h2>Format by brand</h2><span class="sub">average length of uploads</span></div>${table("fmt", [{ k: "name", h: "Brand" }, { k: "vids", h: "Videos", num: 1 }, { k: "lives", h: "Lives", num: 1 }, { k: "avgd", h: "Avg length", num: 1, f: x => dur(Math.round(x)) }], durRows, { sortKey: "avgd" })}</section>` : ""}`;
+  <details class="fold sec"><summary><h2>When uploads go out (IST)</h2><span class="sub">count of uploads by weekday and hour</span></summary><div class="fold-body">
+    <div class="grid2"><div class="box"><div class="sub" style="margin-bottom:6px"><b>${esc(b)}</b></div>${heatHTML(hm, mx, "var(--home)")}</div><div class="box"><div class="sub" style="margin-bottom:6px"><b>Everyone else</b></div>${heatHTML(ha, mxa, "var(--accent)")}</div></div></div></details>
+  <details class="fold sec"><summary><h2>Course and batch launches · ${launches.length}</h2><span class="sub">titles mentioning batch, launch, admission, foundation, course, offer…</span></summary><div class="fold-body">${cards(launches, 24)}</div></details>
+  ${durRows.length ? `<details class="fold sec"><summary><h2>Format by brand</h2><span class="sub">average length of uploads</span></summary><div class="fold-body">${table("fmt", [{ k: "name", h: "Brand" }, { k: "vids", h: "Videos", num: 1 }, { k: "lives", h: "Lives", num: 1 }, { k: "avgd", h: "Avg length", num: 1, f: x => dur(Math.round(x)) }], durRows, { sortKey: "avgd" })}</div></details>` : ""}`;
 }
 
 function subsDelta(c, days) { const h = c.hist || []; if (h.length < 2) return null; const cut = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); let p = h[0]; for (const x of h) if (x[0] <= cut) p = x; return h[h.length - 1][1] - p[1]; }
@@ -636,7 +679,7 @@ function vChannels() {
   const rows = DB.channels.filter(chOk).map(c => { const a = agg(g.get(c.id) || []); return { name: c.name, brand: c.brand, exams: c.exams.join(", "), subs: c.subs, d7: subsDelta(c, 7), d30: subsDelta(c, 30), ...a, gained: G.get(c.id) || 0, last: lastUpload(c.id), _home: c.brand === HOME, _click: "chan:" + c.id }; });
   const sel = S.chan && DB.chMap[S.chan];
   return `<section class="sec"><div class="sec-head"><h2>All channels</h2><span class="sub">${esc(rangeBounds()[2])} · subscriber change builds up from the day the tracker started</span></div>
-  ${table("chans", [{ k: "name", h: "Channel" }, { k: "brand", h: "Brand" }, { k: "exams", h: "Exam" }, { k: "subs", h: "Subs", num: 1, f: n }, { k: "d7", h: "7d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "d30", h: "30d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "n", h: "Uploads", num: 1 }, { k: "nl", h: "Lives", num: 1 }, { k: "gained", h: "Views gained", num: 1, f: n, bar: 1 }, { k: "views", h: "Views on uploads", num: 1, f: n }, { k: "avg24", h: "Avg @24h", num: 1, f: n }, { k: "avg", h: "Avg", num: 1, f: n }, { k: "eng", h: "Eng", num: 1, f: pct }, { k: "last", h: "Last upload", num: 1, f: x => x ? ago(x) : "–" }], rows, { sortKey: mainKey() })}</section>
+  ${table("chans", [{ k: "name", h: "Channel" }, { k: "brand", h: "Brand" }, { k: "exams", h: "Exam" }, { k: "subs", h: "Subs", num: 1, f: n }, { k: "d7", h: "7d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "d30", h: "30d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "n", h: "Uploads", num: 1 }, { k: "nl", h: "Lives", num: 1 }, { k: "gained", h: "Views gained", num: 1, f: n, bar: 1 }, { k: "views", h: "Views on uploads", num: 1, f: n }, { k: "avg24", h: "Avg @24h", num: 1, f: n }, { k: "avg", h: "Avg", num: 1, f: n }, { k: "eng", h: "Eng", num: 1, f: pct }, { k: "last", h: "Last upload", num: 1, f: x => x ? ago(x) : "–" }], rows, { sortKey: mainKey(), limit: 20 })}</section>
   ${sel ? `<section class="sec" id="chanSec"><div class="sec-head"><h2>${esc(sel.name)}</h2><a href="https://www.youtube.com/channel/${sel.id}" target="_blank" rel="noopener">Open on YouTube ↗</a></div>${cards(base({ ignoreBrand: true, ignoreExam: true }).filter(v => v.c === sel.id).sort((x, y) => y.at - x.at), 48)}</section>` : ""}`;
 }
 
@@ -648,8 +691,8 @@ async function openVideo(id) {
   const peers = DB.vids.filter(x => x.c === v.c && x.k === v.k && x.v != null && !isUpcoming(x)), rank = [...peers].sort((a, b) => b.v - a.v).findIndex(x => x.id === id) + 1;
   body.innerHTML = `<div style="position:relative"><button class="close" id="dlgClose" aria-label="Close">×</button>
   <div class="md"><div class="left"><a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt=""></a>
-    <div class="pad"><div class="sub">Views over time</div><div class="chartbox"><canvas id="vchart"></canvas></div><div class="sub" id="chartNote"></div></div></div>
-  <div class="pad"><h3>${esc(v.t)}</h3>
+    <div class="pad"><div class="sub">Views over time</div><div class="chartbox"><canvas id="vchart" role="img" aria-label="Views over time for this upload"></canvas></div><div class="sub" id="chartNote"></div></div></div>
+  <div class="pad"><h3 id="dlgTitle">${esc(v.t)}</h3>
     <div class="sub">${esc(v.ch.name)} · <b>${esc(v.brand)}</b> · ${esc(v.exams.join(", "))}</div>
     <div>${isLiveNow(v) ? `<span class="pill live">● LIVE · ${n(v.cv)} watching</span>` : isUpcoming(v) ? `<span class="pill">⏰ Starts ${esc(fmtIST(v.at))} IST</span>` : `<span class="pill">${v.k === "live" ? "Live stream" : "Video"}</span>`} ${v.mult ? `<span class="pill ${v.mult >= 2 ? "hot" : ""}">${v.mult.toFixed(1)}× channel usual</span>` : ""} ${rank ? `<span class="pill">#${rank} of ${peers.length} on this channel</span>` : ""}</div>
     <div class="mstats"><div><b>${n(v.v)}</b><span>views</span></div><div><b>${n(v.l)}</b><span>likes</span></div><div><b>${n(v.cm)}</b><span>comments</span></div>
@@ -660,7 +703,9 @@ async function openVideo(id) {
     <div class="sub">Stats updated ${v.u ? ago(new Date(v.u)) : "–"}</div>
     <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener"><b>Watch on YouTube ↗</b></a>
   </div></div></div>`;
+  const opener = document.activeElement;
   dlg.showModal();
+  dlg.onclose = () => { if (opener && document.body.contains(opener)) opener.focus(); };
   document.getElementById("dlgClose").onclick = () => dlg.close();
   loadDetails().then(D => { const d = D[id], el = document.getElementById("dlgDetails"); if (!d || !el) return;
     el.innerHTML = `${d.tg && d.tg.length ? `<div class="chips">${d.tg.map(t => `<span class="pill">${esc(t)}</span>`).join("")}</div>` : ""}${d.ds ? `<div class="desc" style="margin-top:8px">${esc(d.ds)}</div>` : ""}`; });
@@ -685,7 +730,7 @@ function renderFresh() {
   if (!DB) return;
   const up = new Date(DB.meta.updated), mins = (Date.now() - up) / 6e4, fr = document.getElementById("fresh");
   fr.className = "fresh" + (mins > 40 ? " stale" : "");
-  fr.innerHTML = `<span class="dot"></span>Updated ${ago(up)} · ${DB.channels.length} channels · ${DB.vids.length} uploads tracked`;
+  fr.innerHTML = `<span class="dot" aria-hidden="true"></span>${mins > 40 ? "Data delayed · " : ""}Updated ${ago(up)} · ${DB.channels.length} channels · ${DB.vids.length} uploads tracked`;
 }
 let VG_ON = false;   // per-upload gains usable for the current range (checked once per render)
 function render() {
@@ -693,11 +738,12 @@ function render() {
   renderFresh();
   VG_ON = hasVGain();
   const views = { overview: vOverview, brands: vBrands, exams: vExams, videos: vVideos, live: vLive, trending: vTrending, insights: vInsights, channels: vChannels };
+  SEC = 0;
   document.getElementById("main").innerHTML = views[S.tab]();
   document.getElementById("pageTitle").textContent = document.querySelector(`#tabs [data-t="${S.tab}"]`)?.textContent || "";
   if (S.tab === "brands") drawBrandChart();
 }
-function seg(id, key, after) { document.getElementById(id).addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S[key] = b.dataset.v; [...e.currentTarget.children].forEach(x => x.classList.toggle("on", x === b)); after && after(); render(); }); }
+function seg(id, key, after) { document.getElementById(id).addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S[key] = b.dataset.v; [...e.currentTarget.children].forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); after && after(); render(); }); }
 seg("range", "range", () => { document.getElementById("customBox").hidden = S.range !== "custom"; });
 seg("kind", "kind");
 document.getElementById("from").onchange = e => { S.from = e.target.value; render(); };
@@ -706,13 +752,17 @@ document.getElementById("brandSel").onchange = e => { S.brand = e.target.value; 
 document.getElementById("examSel").onchange = e => { S.exam = e.target.value; render(); };
 let qt; document.getElementById("q").oninput = e => { clearTimeout(qt); qt = setTimeout(() => { S.q = e.target.value; render(); }, 200); };
 document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S.tab = b.dataset.t; [...e.currentTarget.children].forEach(x => x.classList.toggle("on", x === b)); location.hash = S.tab; render(); window.scrollTo(0, 0); });
-function goTab(t) { S.tab = t; document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x.dataset.t === t)); location.hash = t; render(); }
+function goTab(t) { S.tab = t; document.querySelectorAll("#tabs button").forEach(x => { x.classList.toggle("on", x.dataset.t === t); if (x.dataset.t === t) x.setAttribute("aria-current", "page"); else x.removeAttribute("aria-current"); }); location.hash = t; render(); }
 document.getElementById("main").addEventListener("click", e => {
   const c = e.target.closest(".card"); if (c) return openVideo(c.dataset.vid);
-  const th = e.target.closest("th[data-k]"); if (th) { const id = th.closest("table").dataset.tid, k = th.dataset.k, cur = S.sort[id]; S.sort[id] = { k, d: cur && cur.k === k ? -cur.d : -1 }; return render(); }
+  const th = e.target.closest("th[data-k]"); if (th) { const id = th.closest("table").dataset.tid, k = th.dataset.k, cur = S.sort[id]; S.sort[id] = { k, d: cur && cur.k === k ? -cur.d : (th.classList.contains("l") ? 1 : -1) }; return render(); }
   const tr = e.target.closest("tr[data-click]"); if (tr && tr.dataset.click) { const [t, v] = tr.dataset.click.split(/:(.*)/s); if (t === "brand") { S.pickBrand = v; S.pickChan = ""; return goTab("brands"); } if (t === "vid") return openVideo(v);
     if (t === "pchan") { S.pickChan = S.pickChan === v ? "" : v; render(); return document.getElementById("scopeTop")?.scrollIntoView({ behavior: "smooth", block: "start" }); } if (t === "chan") { S.chan = v; if (S.tab !== "channels") goTab("channels"); else render(); setTimeout(() => document.getElementById("chanSec")?.scrollIntoView({ behavior: "smooth" }), 50); return; } }
   if (e.target.closest("#colsBtn")) { S.fullCols = !S.fullCols; return render(); }
+  const mb = e.target.closest("[data-more]"); if (mb) { const id = mb.dataset.more; S.more[id] = (S.more[id] || +mb.dataset.step) + (+mb.dataset.step); return render(); }
+  const lb = e.target.closest("[data-less]"); if (lb) { delete S.more[lb.dataset.less]; render(); return lb.closest("section, details")?.scrollIntoView({ block: "start" }); }
+  const tb = e.target.closest("[data-tmore]"); if (tb) { const k = "t:" + tb.dataset.tmore; S.more[k] = !S.more[k]; return render(); }
+  if (e.target.closest("[data-chmore]")) { S.more.pchan = !S.more.pchan; return render(); }
   const bg = e.target.closest("[data-brandgo]"); if (bg) { S.pickBrand = bg.dataset.brandgo; S.pickChan = ""; return goTab("brands"); }
   const pcb = e.target.closest("[data-pchan]"); if (pcb) { S.pickChan = pcb.dataset.pchan; return render(); }
   const bc = e.target.closest("[data-brand]"); if (bc) { S.pickBrand = bc.dataset.brand; S.pickChan = ""; return render(); }
@@ -720,7 +770,8 @@ document.getElementById("main").addEventListener("click", e => {
   const qc = e.target.closest("[data-q]"); if (qc) { S.q = qc.dataset.q; document.getElementById("q").value = S.q; return goTab("videos"); }
   const vs = e.target.closest("#vsort button"); if (vs) { S.vsort = vs.dataset.v; return render(); }
 });
-document.getElementById("main").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.classList.contains("card")) openVideo(e.target.dataset.vid); });
+document.getElementById("main").addEventListener("change", e => { const sel = e.target.closest("select[data-brandsel]"); if (sel && sel.value) { S.pickBrand = sel.value; S.pickChan = ""; render(); } });
+document.getElementById("main").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("card")) { e.preventDefault(); openVideo(e.target.dataset.vid); } });
 document.getElementById("dlg").addEventListener("click", e => { if (e.target.id === "dlg") e.target.close(); });
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h !== S.tab && document.querySelector(`#tabs [data-t="${h}"]`)) goTab(h); });
 const h0 = location.hash.slice(1); if (["overview", "brands", "exams", "videos", "live", "trending", "insights", "channels"].includes(h0)) goTab(h0);
