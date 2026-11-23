@@ -244,6 +244,7 @@ dialog::backdrop { background: rgba(6,10,18,.62); backdrop-filter: blur(2px) }
     <nav class="tabs" id="tabs" aria-label="Sections">
       <button data-t="overview" class="on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</button>
       <button data-t="brands"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Brands</button>
+      <button data-t="compare"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8M10 20V4M14 20v-9M20 20V12"/><path d="M2 20h20"/></svg>Compare</button>
       <button data-t="exams"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Exams</button>
       <button data-t="videos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Videos</button>
       <button data-t="live"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 000 11.4M17.7 6.3a8 8 0 010 11.4"/></svg>Live</button>
@@ -424,7 +425,7 @@ function cards(list, limit = 48, ranked = false) {
 }
 
 function table(id, cols, rows, opts = {}) {
-  const st = S.sort[id] || { k: opts.sortKey || cols.find(c => c.num)?.k, d: -1 };
+  const st = S.sort[id] || { k: opts.sortKey || cols.find(c => c.num)?.k, d: opts.dir || -1 };
   rows = [...rows].sort((a, b) => { const x = a[st.k], y = b[st.k]; return (typeof x === "string" ? x.localeCompare(y) : (x ?? -1) - (y ?? -1)) * st.d; });
   const max = {}; cols.forEach(c => { if (c.bar) max[c.k] = Math.max(1, ...rows.map(r => r[c.k] || 0)); });
   const total = rows.length, lim = opts.limit ?? 12, all = S.more["t:" + id] || total <= lim + 2;
@@ -441,20 +442,25 @@ const COLTIP = {
   med: "Middle value of total views per upload posted in the selected days",
   avg24: "Average views each upload had 24 hours after going up",
   eng: "(Likes + comments) / views, for uploads posted in the selected days",
-  n: "Videos and lives posted in the selected days"
+  n: "Videos and lives posted in the selected days",
+  chv: "Views on every video and Short on the channel during these days, from YouTube's lifetime view count",
+  subs: "Subscribers now (YouTube rounds big channels to 3 significant figures)",
+  subsD: "Subscriber change over the selected days. Approximate for channels above 1 lakh because YouTube rounds"
 };
 const brandCols = [
   { k: "name", h: "Brand", f: (x, r) => `${r.rank ? `<span class="rk">${r.rank}</span>` : ""}<b>${esc(x)}</b>${r._home ? ' <span class="pill hot">You</span>' : ""}` },
   { k: "chs", h: "Channels", num: 1 }, { k: "n", h: "Uploads", num: 1 }, { k: "nv", h: "Videos", num: 1 }, { k: "nl", h: "Lives", num: 1 },
   { k: "gained", h: "Views gained", num: 1, f: n, bar: 1 }, { k: "gshare", h: "Share", num: 1, f: pct },
   { k: "avg24", h: "Avg @24h", num: 1, f: n }, { k: "views", h: "Views on uploads", num: 1, f: n }, { k: "avg", h: "Avg views", num: 1, f: n },
-  { k: "med", h: "Median", num: 1, f: n }, { k: "likes", h: "Likes", num: 1, f: n }, { k: "cm", h: "Comments", num: 1, f: n }, { k: "eng", h: "Engagement", num: 1, f: pct }
+  { k: "med", h: "Median", num: 1, f: n }, { k: "likes", h: "Likes", num: 1, f: n }, { k: "cm", h: "Comments", num: 1, f: n }, { k: "eng", h: "Engagement", num: 1, f: pct },
+  { k: "chv", h: "All views incl. Shorts", num: 1, f: n }, { k: "subs", h: "Subscribers", num: 1, f: n }, { k: "subsD", h: "Subs change", num: 1, f: x => sgn(x) }
 ];
 // chFilter limits which channels count (e.g. only channels covering one exam)
 function brandRows(list, chFilter = chOk) {
   const g = groupBy(list, v => v.brand), G = gains(chFilter), total = [...G.values()].reduce((s, x) => s + x, 0);
   return DB.brands.map(b => { const a = agg(g.get(b) || []), gained = sumG(G, c => c.brand === b);
-    return { name: b, chs: DB.channels.filter(c => c.brand === b && chFilter(c)).length, ...a, gained, gshare: total ? gained / total : null, _home: b === HOME, _click: "brand:" + b }; });
+    const gr = brandGrowth(b, dayKeys(), chFilter);
+    return { name: b, chs: DB.channels.filter(c => c.brand === b && chFilter(c)).length, ...a, ...gr, gained, gshare: total ? gained / total : null, _home: b === HOME, _click: "brand:" + b }; });
 }
 // Compact brand picker: Drishti + most active brands as chips, the rest in a dropdown
 function brandPicker(b, counts) {
@@ -498,7 +504,7 @@ function vOverview() {
   const segs = top.map((r, i) => ({ name: r.name, s: shareOf(r) || 0, c: col(r, i), me: r._home }));
   if (restShare > 0) segs.push({ name: `${rest.length} others`, s: restShare, c: "var(--faint)" });
   const dTag = dShare == null ? "" : `<span class="delta ${dShare >= 0 ? "up" : "down"}">${dShare >= 0 ? "▲" : "▼"} ${Math.abs(dShare).toFixed(1)} pts</span>`;
-  const compact = !S.fullCols, cols = compact ? brandCols.filter(c => ["name", "n", "nv", "nl", "gained", "gshare", "avg24", "eng"].includes(c.k) || (!DB.hasGains && c.k === "views")) : brandCols;
+  const compact = !S.fullCols, cols = compact ? brandCols.filter(c => ["name", "n", "nv", "nl", "gained", "gshare", "avg24", "chv", "subsD"].includes(c.k) || (!DB.hasGains && c.k === "views")) : brandCols;
   return `${!DB.meta.api ? `<div class="notice">Running without a YouTube API key, so only views and likes for each channel's latest 15 uploads are shown. Add the <b>YOUTUBE_API_KEY</b> secret for comments, durations, live viewers and full history.</div>` : ""}
   ${partial.length ? `<div class="notice">Views gained started counting on the evening of ${esc(partial[partial.length - 1])}, so that day only includes its new uploads plus a few hours of growth on older ones. Pick <b>Today</b> or later dates for complete numbers.</div>` : ""}
   ${S.q && DB.hasGains ? `<div class="notice">The title search filters the upload lists, but views gained still covers every upload.</div>` : ""}
@@ -530,6 +536,7 @@ function vOverview() {
     <span class="tbl-tools"><button class="linkbtn" id="colsBtn">${compact ? "Show all columns" : "Show fewer columns"}</button></span></div>
   ${table("brands", cols, rows.filter(r => r.n || r.gained || r._home), { sortKey: mk })}
   <div class="sub">${gainsNote()}</div></section>
+  ${DB.hasGains ? `<details class="fold sec" open><summary><h2>Share of views gained over time</h2><span class="sub">${esc(HOME)} vs the 4 brands gaining most · daily</span></summary><div class="fold-body">${shareTrend("ovShare", [HOME, ...ranked.filter(r => !r._home && r.gained).slice(0, 4).map(r => r.name)])}</div></details>` : ""}
   <div class="grid2">
     <section class="sec"><div class="sec-head"><h2>Trending now</h2><span class="sub">fastest gaining views</span></div>${cards(trend, 8, true)}</section>
     <section class="sec"><div class="sec-head"><h2>Top performer by exam</h2><span class="sub">${esc(label)}</span></div>
@@ -593,7 +600,6 @@ function drawBrandChart() {
   const css = getComputedStyle(document.documentElement), muted = css.getPropertyValue("--muted").trim(), line = css.getPropertyValue("--line").trim();
   const ds = chsB.map((c, i) => ({ label: c.name, backgroundColor: `hsl(${(i * 47 + 200) % 360} 60% 55%)`, stack: "s",
     data: keys.map(k => { const g = DB.daily[k]?.[c.id]; return g ? (S.kind === "video" ? g[0] : S.kind === "live" ? g[1] : g[0] + g[1]) : 0; }) }));
-  charts.forEach(c => c.destroy()); charts = [];
   charts.push(new Chart(el, { type: "bar", data: { labels: keys.map(k => k.slice(5)), datasets: ds },
     options: { maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { color: muted, boxWidth: 10, font: { size: 11 } } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${n(c.raw)}` } } },
       scales: { x: { stacked: true, ticks: { color: muted }, grid: { display: false } }, y: { stacked: true, ticks: { color: muted, callback: x => n(x) }, grid: { color: line } } } } }));
@@ -625,8 +631,9 @@ function vLive() {
   const g = groupBy(base().filter(v => v.k === "live"), v => v.brand);
   const rows = DB.brands.map(b => { const l = g.get(b) || [], a = agg(l); return { name: b, n: l.length, hrs: a.liveHrs, views: a.views, avg: a.avg, peak: Math.max(0, ...l.map(v => v.pv || 0)), _home: b === HOME, _click: "brand:" + b }; }).filter(r => r.n);
   return `<section class="sec"><div class="sec-head"><h2>🔴 Live now · ${now.length}</h2></div>${now.length ? cards(now, 30) : `<div class="empty">No one is live right now.</div>`}</section>
+  <section class="sec"><div class="sec-head"><h2>Live clash calendar · next 24 hours</h2><span class="sub">hours where ${esc(HOME)} and competitors are live at the same time are flagged · IST</span></div>${clashCalendar()}</section>
   <section class="sec"><div class="sec-head"><h2>⏰ Upcoming schedule</h2><span class="sub">times in IST</span></div>
-  ${up.length ? table("up", [{ k: "when", h: "Starts" }, { k: "in", h: "In", num: 1 }, { k: "brand", h: "Brand" }, { k: "chn", h: "Channel" }, { k: "t", h: "Title", f: x => esc(x.slice(0, 70)) }], up.map(v => ({ when: fmtIST(v.at), in: until(v.at), _t: v.at.getTime(), brand: v.brand, chn: v.ch.name, t: v.t, _home: v.brand === HOME, _click: "vid:" + v.id })), { sortKey: "_t", limit: 10 }) : `<div class="empty">No scheduled lives found.</div>`}</section>
+  ${up.length ? table("up", [{ k: "when", h: "Starts" }, { k: "in", h: "In", num: 1 }, { k: "brand", h: "Brand" }, { k: "chn", h: "Channel" }, { k: "t", h: "Title", f: x => esc(x.slice(0, 70)) }], up.map(v => ({ when: fmtIST(v.at), in: until(v.at), _t: v.at.getTime(), brand: v.brand, chn: v.ch.name, t: v.t, _home: v.brand === HOME, _click: "vid:" + v.id })), { sortKey: "_t", dir: 1, limit: 10 }) : `<div class="empty">No scheduled lives found.</div>`}</section>
   <section class="sec"><div class="sec-head"><h2>Live performance by brand</h2><span class="sub">${esc(rangeBounds()[2])}</span></div>
   ${table("liveb", [{ k: "name", h: "Brand", f: (x, r) => `<b>${esc(x)}</b>` }, { k: "n", h: "Lives", num: 1 }, { k: "hrs", h: "Live hours", num: 1, f: x => x.toFixed(1) }, { k: "views", h: "Views", num: 1, f: n, bar: 1 }, { k: "avg", h: "Avg views", num: 1, f: n }, { k: "peak", h: "Peak watching", num: 1, f: x => x ? n(x) : "–" }], rows, { sortKey: "views" })}</section>
   <section class="sec"><div class="sec-head"><h2>Best lives · ${esc(rangeBounds()[2])}</h2></div>${cards(past, 24, true)}</section>`;
@@ -666,6 +673,15 @@ function vInsights() {
     <section class="sec"><div class="sec-head"><h2>Gaps for ${esc(b)}</h2><span class="sub">topics with 3+ uploads by others and none by ${esc(b)}</span></div>
       <div class="box"><div class="chips">${gaps.map(([w, c]) => `<button class="chip" data-q="${esc(w)}">${esc(w)}<small>${c}</small></button>`).join("") || `<span class="sub">No gaps in this range.</span>`}</div><p class="sub" style="margin:10px 0 0">Click a topic to search uploads about it.</p></div></section>
   </div>
+  ${(() => { const mm = subjectMix(mine), mo = subjectMix(others), nm = mine.length || 1, no = others.length || 1;
+    const rows = SUBJ_NAMES.map(k => { const a = mm.get(k), o = mo.get(k); return { name: k, me: a.n / nm, oth: o.n / no, gap: (a.n / nm - o.n / no) * 100, meAvg: a.n ? a.views / a.n : null, othAvg: o.n ? o.views / o.n : null, meN: a.n, othN: o.n }; });
+    return `<section class="sec"><div class="sec-head"><h2>Subject mix: ${esc(b)} vs everyone else</h2><span class="sub">share of uploads by subject · ${esc(rangeBounds()[2])} · red = ${esc(b)} covers it less</span></div>
+    ${table("subj", [{ k: "name", h: "Subject" }, { k: "me", h: esc(b), num: 1, f: (x, r) => `${pct(x)} <small class="sub">${r.meN}</small>` }, { k: "oth", h: "Others", num: 1, f: (x, r) => `${pct(x)} <small class="sub">${r.othN}</small>` },
+      { k: "gap", h: "Gap (pts)", num: 1, f: x => `<span style="color:${x < -2 ? "var(--bad)" : x > 2 ? "var(--good)" : "inherit"}">${x > 0 ? "+" : ""}${x.toFixed(1)}</span>` }, { k: "meAvg", h: `${esc(b)} avg views`, num: 1, f: n }, { k: "othAvg", h: "Others avg views", num: 1, f: n }], rows, { sortKey: "oth", limit: 12 })}</section>`; })()}
+  ${(() => { const kf = v => S.kind === "all" || v.k === S.kind, sm = timeStats(DB.vids.filter(v => v.brand === b && kf(v))), so = timeStats(DB.vids.filter(v => v.brand !== b && kf(v))), bm = bestBlock(sm), bo = bestBlock(so);
+    return `<section class="sec"><div class="sec-head"><h2>Best time to post</h2><span class="sub">median views at 24 hours by upload time (IST) · last 60 days${bm ? ` · ${esc(b)} does best at <b>${bm.label}</b>` : ""}${bo ? ` · others at <b>${bo.label}</b>` : ""}</span></div>
+    ${table("besttime", [{ k: "label", h: "Upload time (IST)" }, { k: "mn", h: `${esc(b)} uploads`, num: 1 }, { k: "mm", h: `${esc(b)} median @24h`, num: 1, f: (x, r) => `${n(x)}${bm && r.label === bm.label ? " ★" : ""}` }, { k: "on", h: "Others uploads", num: 1 }, { k: "om", h: "Others median @24h", num: 1, f: (x, r) => `${n(x)}${bo && r.label === bo.label ? " ★" : ""}` }],
+      BLOCKS.map((x, i) => ({ label: x[2], _i: i, mn: sm[i].n, mm: sm[i].med, on: so[i].n, om: so[i].med })), { sortKey: "_i", dir: 1 })}</section>`; })()}
   <details class="fold sec"><summary><h2>When uploads go out (IST)</h2><span class="sub">count of uploads by weekday and hour</span></summary><div class="fold-body">
     <div class="grid2"><div class="box"><div class="sub" style="margin-bottom:6px"><b>${esc(b)}</b></div>${heatHTML(hm, mx, "var(--home)")}</div><div class="box"><div class="sub" style="margin-bottom:6px"><b>Everyone else</b></div>${heatHTML(ha, mxa, "var(--accent)")}</div></div></div></details>
   <details class="fold sec"><summary><h2>Course and batch launches · ${launches.length}</h2><span class="sub">titles mentioning batch, launch, admission, foundation, course, offer…</span></summary><div class="fold-body">${cards(launches, 24)}</div></details>
@@ -676,11 +692,129 @@ function subsDelta(c, days) { const h = c.hist || []; if (h.length < 2) return n
 function lastUpload(cid) { let m = null; for (const v of DB.vids) if (v.c === cid && !isUpcoming(v) && (!m || v.at > m)) m = v.at; return m; }
 function vChannels() {
   const list = base(), g = groupBy(list, v => v.c), G = gains(chOk);
-  const rows = DB.channels.filter(chOk).map(c => { const a = agg(g.get(c.id) || []); return { name: c.name, brand: c.brand, exams: c.exams.join(", "), subs: c.subs, d7: subsDelta(c, 7), d30: subsDelta(c, 30), ...a, gained: G.get(c.id) || 0, last: lastUpload(c.id), _home: c.brand === HOME, _click: "chan:" + c.id }; });
+  const rows = DB.channels.filter(chOk).map(c => { const a = agg(g.get(c.id) || []); return { name: c.name, brand: c.brand, exams: c.exams.join(", "), subs: c.subs, d7: subsDelta(c, 7), d30: subsDelta(c, 30), ...a, gained: G.get(c.id) || 0, chv: chViewsIn(c, dayKeys()), last: lastUpload(c.id), _home: c.brand === HOME, _click: "chan:" + c.id }; });
   const sel = S.chan && DB.chMap[S.chan];
   return `<section class="sec"><div class="sec-head"><h2>All channels</h2><span class="sub">${esc(rangeBounds()[2])} · subscriber change builds up from the day the tracker started</span></div>
-  ${table("chans", [{ k: "name", h: "Channel" }, { k: "brand", h: "Brand" }, { k: "exams", h: "Exam" }, { k: "subs", h: "Subs", num: 1, f: n }, { k: "d7", h: "7d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "d30", h: "30d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "n", h: "Uploads", num: 1 }, { k: "nl", h: "Lives", num: 1 }, { k: "gained", h: "Views gained", num: 1, f: n, bar: 1 }, { k: "views", h: "Views on uploads", num: 1, f: n }, { k: "avg24", h: "Avg @24h", num: 1, f: n }, { k: "avg", h: "Avg", num: 1, f: n }, { k: "eng", h: "Eng", num: 1, f: pct }, { k: "last", h: "Last upload", num: 1, f: x => x ? ago(x) : "–" }], rows, { sortKey: mainKey(), limit: 20 })}</section>
+  ${table("chans", [{ k: "name", h: "Channel" }, { k: "brand", h: "Brand" }, { k: "exams", h: "Exam" }, { k: "subs", h: "Subs", num: 1, f: n }, { k: "d7", h: "7d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "d30", h: "30d", num: 1, f: x => x == null ? "–" : (x >= 0 ? "+" : "") + n(x) }, { k: "n", h: "Uploads", num: 1 }, { k: "nl", h: "Lives", num: 1 }, { k: "gained", h: "Views gained", num: 1, f: n, bar: 1 }, { k: "chv", h: "All views incl. Shorts", num: 1, f: n }, { k: "views", h: "Views on uploads", num: 1, f: n }, { k: "avg24", h: "Avg @24h", num: 1, f: n }, { k: "avg", h: "Avg", num: 1, f: n }, { k: "eng", h: "Eng", num: 1, f: pct }, { k: "last", h: "Last upload", num: 1, f: x => x ? ago(x) : "–" }], rows, { sortKey: mainKey(), limit: 20 })}</section>
   ${sel ? `<section class="sec" id="chanSec"><div class="sec-head"><h2>${esc(sel.name)}</h2><a href="https://www.youtube.com/channel/${sel.id}" target="_blank" rel="noopener">Open on YouTube ↗</a></div>${cards(base({ ignoreBrand: true, ignoreExam: true }).filter(v => v.c === sel.id).sort((x, y) => y.at - x.at), 48)}</section>` : ""}`;
+}
+
+
+// ---------- growth: channel totals (incl. Shorts) and subscribers ----------
+// channel.hist rows: [IST date, subscribers, lifetime views, video count], one row per day (last reading of that day)
+function chViewsByDay(c) { const h = c.hist || [], m = {}; for (let i = 1; i < h.length; i++) if (h[i][2] != null && h[i - 1][2] != null) m[h[i][0]] = Math.max(0, h[i][2] - h[i - 1][2]); return m; }
+function chViewsIn(c, keys) { const m = chViewsByDay(c); let s = 0, any = false; for (const k of keys) if (m[k] != null) { s += m[k]; any = true; } return any ? s : null; }
+function subsChange(c, keys) {
+  const h = (c.hist || []).filter(x => x[1] != null); if (h.length < 2 || !keys.length) return null;
+  let before = null, end = null; for (const x of h) { if (x[0] < keys[0]) before = x; if (x[0] <= keys[keys.length - 1]) end = x; }
+  if (!before) before = h[0]; if (!end || end === before) return null; return end[1] - before[1];
+}
+const sumOrNull = arr => { const v = arr.filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+const sgn = x => x == null ? "–" : (x > 0 ? "+" : "") + n(x);
+function brandGrowth(b, keys, chFilter = chOk) {
+  const chs = DB.channels.filter(c => c.brand === b && chFilter(c));
+  return { subs: sumOrNull(chs.map(c => c.subs)), subsD: sumOrNull(chs.map(c => subsChange(c, keys))), chv: sumOrNull(chs.map(c => chViewsIn(c, keys))) };
+}
+
+// ---------- charts ----------
+let HOOKS = [];
+const PAL = ["#4f63ff", "#14b8a6", "#a855f7", "#0ea5e9", "#64748b", "#84cc16", "#f43f5e"];
+function cssv(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function lineChart(id, labels, sets, yfmt) {
+  HOOKS.push(() => {
+    const el = document.getElementById(id); if (!el || !window.Chart) return;
+    const muted = cssv("--muted"), line = cssv("--line");
+    charts.push(new Chart(el, { type: "line", data: { labels, datasets: sets.map(st => ({ label: st.label, data: st.data, borderColor: st.color, backgroundColor: st.color, borderWidth: st.home ? 3.2 : 1.6, pointRadius: labels.length > 20 ? 0 : 2.5, tension: .25, spanGaps: true })) },
+      options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { position: "bottom", labels: { color: muted, boxWidth: 10, font: { size: 11 } } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${yfmt(c.raw)}` } } },
+        scales: { x: { ticks: { color: muted, maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { color: muted, callback: v => yfmt(v) }, grid: { color: line } } } } }));
+  });
+}
+function brandColor(b, i) { return b === HOME ? cssv("--home") : PAL[i % PAL.length]; }
+// days to plot: the selected range when it spans 3+ days, otherwise the last 14 days; partial first tracking day dropped
+function trendDays() { let k = dayKeys(); if (k.length < 3) { k = []; for (let i = 13; i >= 0; i--) k.push(dayStr(-i)); } return k.filter(d => !DB.meta.gains_since || d > DB.meta.gains_since); }
+function gainsByBrandDay(day, chFilter = chOk) { const m = new Map(), d = DB.daily[day] || {}; for (const cid in d) { const c = DB.chMap[cid]; if (!c || !chFilter(c)) continue; const [gv, gl] = d[cid]; m.set(c.brand, (m.get(c.brand) || 0) + (S.kind === "video" ? gv : S.kind === "live" ? gl : gv + gl)); } return m; }
+function shareTrend(id, brands) {
+  const days = trendDays().filter(d => DB.daily[d]);
+  if (days.length < 2) return `<div class="empty">The trend fills in after two full days of tracking.</div>`;
+  const per = days.map(d => gainsByBrandDay(d)), tot = per.map(m => [...m.values()].reduce((a, b) => a + b, 0));
+  lineChart(id, days.map(d => d.slice(5)), brands.map((b, i) => ({ label: b, home: b === HOME, color: brandColor(b, i), data: per.map((m, j) => tot[j] ? +(100 * (m.get(b) || 0) / tot[j]).toFixed(1) : null) })), v => v == null ? "–" : v + "%");
+  return `<div class="box"><div class="chartbox" style="height:280px"><canvas id="${id}" role="img" aria-label="Line chart: daily share of views gained for ${esc(brands.join(", "))}"></canvas></div></div>`;
+}
+function channelViewsTrend(id, brands) {
+  const days = trendDays().filter(d => d !== dayStr(0)); // today is still filling in
+  const sets = brands.map((b, i) => ({ label: b, home: b === HOME, color: brandColor(b, i), data: days.map(d => sumOrNull(DB.channels.filter(c => c.brand === b && chOk(c)).map(c => chViewsByDay(c)[d] ?? null))) }));
+  if (!sets.some(st => st.data.filter(x => x != null).length >= 2)) return `<div class="empty">Daily channel views fill in after two full days of tracking.</div>`;
+  lineChart(id, days.map(d => d.slice(5)), sets, v => v == null ? "–" : n(v));
+  return `<div class="box"><div class="chartbox" style="height:260px"><canvas id="${id}" role="img" aria-label="Line chart: total channel views per day including Shorts"></canvas></div></div>`;
+}
+
+// ---------- subject mix ----------
+const SUBJECTS = [
+  ["Current Affairs", /current affairs|news analysis|the hindu|indian express|editorial|\bpib\b|करेंट अफेयर्स|समसामयिक/i],
+  ["Polity", /polity|constitution|parliament|governance|judiciary|supreme court|fundamental right|amendment|panchayat|federal|राजव्यवस्था|संविधान/i],
+  ["History & Culture", /histor|ancient|medieval|freedom struggle|mughal|harappa|indus valley|art and culture|\bculture\b|इतिहास|संस्कृति/i],
+  ["Geography", /geograph|climate|monsoon|river|mountain|\bmap\b|cyclone|earthquake|\bsoil|भूगोल/i],
+  ["Economy", /econom|budget|\bgdp\b|inflation|\brbi\b|\btax|\bgst\b|fiscal|monetary|अर्थव्यवस्था|बजट/i],
+  ["Environment", /environment|ecology|biodiversity|pollution|wildlife|tiger|\bforest|\bcop ?\d+|पर्यावरण/i],
+  ["International Relations", /international|foreign policy|bilateral|summit|asean|\bg20\b|united nations|\bnato\b|geopolit|china|pakistan|\busa\b|russia|अंतरराष्ट्रीय/i],
+  ["Science & Tech", /science|technolog|\bisro\b|space|\bai\b|artificial intelligence|nuclear|biotech|vaccine|satellite|विज्ञान/i],
+  ["Ethics & Essay", /ethic|essay|integrity|\bgs ?4\b|answer writing|निबंध|नीतिशास्त्र/i],
+  ["CSAT & Aptitude", /csat|aptitude|reasoning|\bmaths?\b|comprehension/i],
+  ["Strategy & Guidance", /strategy|topper|interview|motivation|book ?list|syllabus|how to|roadmap|result|cut ?off|notification/i],
+];
+function subjectsOf(t) { const out = SUBJECTS.filter(([, re]) => re.test(t)).map(([k]) => k); return out.length ? out : ["Other"]; }
+const SUBJ_NAMES = SUBJECTS.map(x => x[0]).concat("Other");
+function subjectMix(list) { const m = new Map(SUBJ_NAMES.map(k => [k, { n: 0, views: 0 }])); for (const v of list) for (const k of subjectsOf(v.t)) { const e = m.get(k); e.n++; e.views += v.v || 0; } return m; }
+
+// ---------- best time to post ----------
+const BLOCKS = [[0, 6, "12–6 AM"], [6, 9, "6–9 AM"], [9, 12, "9 AM–12 PM"], [12, 15, "12–3 PM"], [15, 18, "3–6 PM"], [18, 21, "6–9 PM"], [21, 24, "9 PM–12 AM"]];
+function timeStats(list) { return BLOCKS.map(([a, b, l]) => { const xs = list.filter(v => v.v24 != null).filter(v => { const h = istDate(v.at).getUTCHours(); return h >= a && h < b; }).map(v => v.v24); return { label: l, n: xs.length, med: xs.length ? median(xs) : null }; }); }
+function bestBlock(stats) { return stats.filter(x => x.n >= 3).sort((x, y) => y.med - x.med)[0] || null; }
+
+// ---------- compare tab ----------
+function cmpBrands() {
+  if (!S.cmp) { const g = gains(chOk), tot = new Map(); for (const [cid, x] of g) { const b = DB.chMap[cid].brand; tot.set(b, (tot.get(b) || 0) + x); } S.cmp = [HOME, ...[...tot].filter(([b]) => b !== HOME).sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0])]; }
+  S.cmp = S.cmp.filter(b => DB.brands.includes(b)); return S.cmp;
+}
+function vCompare() {
+  const sel = cmpBrands(), keys = dayKeys(), all = base({ ignoreBrand: true }), G = gains(chOk), totalG = [...G.values()].reduce((a, b) => a + b, 0), label = rangeBounds()[2];
+  const data = sel.map(b => { const l = all.filter(v => v.brand === b), a = agg(l), gr = brandGrowth(b, keys), gained = sumG(G, c => c.brand === b);
+    return { b, a, gr, gained, share: totalG ? gained / totalG : null, chs: DB.channels.filter(c => c.brand === b && chOk(c)).length, best: bestBlock(timeStats(DB.vids.filter(v => v.brand === b && (S.kind === "all" || v.k === S.kind)))), mix: subjectMix(l), l }; });
+  const rowsDef = [
+    ["Channels", d => d.chs, x => x, 1], ["Uploads", d => d.a.n, x => x, 1], ["Videos · lives", d => d.a.nv * 1e4 + d.a.nl, (x, d) => `${d.a.nv} · ${d.a.nl}`, 0],
+    ["Views gained (long videos & lives)", d => d.gained, n, 1], ["Share of views gained", d => d.share, pct, 1],
+    ["All channel views incl. Shorts", d => d.gr.chv, n, 1], ["Avg views at 24h", d => d.a.avg24, n, 1], ["Median views per upload", d => d.a.med, n, 1],
+    ["Engagement", d => d.a.eng, pct, 1], ["Live hours", d => d.a.liveHrs, x => x == null ? "–" : x.toFixed(1), 1],
+    ["Subscribers (all channels)", d => d.gr.subs, n, 1], ["Subscriber change", d => d.gr.subsD, sgn, 1], ["Best upload time (median @24h)", d => d.best ? d.best.med : null, (x, d) => d.best ? `${d.best.label} · ${n(d.best.med)}` : "–", 0]];
+  const head = `<tr><th scope="col" class="l">Measure · ${esc(label)}</th>${data.map(d => `<th scope="col"${d.b === HOME ? ' style="color:var(--home-ink)"' : ""}>${esc(d.b)}</th>`).join("")}</tr>`;
+  const body = rowsDef.map(([lbl, get, fmt, hl]) => { const vals = data.map(get), best = hl ? Math.max(...vals.filter(x => x != null)) : null;
+    return `<tr><th scope="row" class="l" style="text-transform:none;letter-spacing:0;font:500 .85rem var(--body);color:var(--fg);background:transparent">${lbl}</th>${data.map((d, i) => `<td${hl && vals[i] != null && vals[i] === best && data.length > 1 ? ' style="font-weight:700;color:var(--good)"' : ""}>${fmt(vals[i], d)}</td>`).join("")}</tr>`; }).join("");
+  const mixRows = SUBJ_NAMES.map(k => `<tr><th scope="row" class="l" style="text-transform:none;letter-spacing:0;font:500 .85rem var(--body);color:var(--fg);background:transparent">${k}</th>${data.map(d => { const e = d.mix.get(k); return `<td>${d.a.n ? pct(e.n / d.a.n) : "–"}<small class="sub"> · ${e.n}</small></td>`; }).join("")}</tr>`).join("");
+  const pickChips = DB.brands.slice().sort((a, b) => (a === HOME ? -1 : b === HOME ? 1 : a.localeCompare(b)));
+  return `<section class="sec"><div class="sec-head"><h2>Compare brands side by side</h2><span class="sub">pick up to 4 · best value in each row is green</span></div>
+    <div class="picker"><div class="chips">${sel.map(b => `<button type="button" class="chip on ${b === HOME ? "homechip" : ""}" data-cmprm="${esc(b)}" aria-label="Remove ${esc(b)} from comparison">${esc(b)} ✕</button>`).join("")}</div>
+    ${sel.length < 4 ? `<select data-cmpadd aria-label="Add a brand to compare"><option value="">+ Add a brand…</option>${pickChips.filter(b => !sel.includes(b)).map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join("")}</select>` : ""}</div></section>
+  <section class="sec"><div class="tablewrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>
+    <div class="sub">"All channel views incl. Shorts" comes from each channel's lifetime view count, so it covers every video and Short, not just recent uploads. Subscriber counts above 1 lakh are rounded by YouTube, so small changes can show as 0.</div></section>
+  <section class="sec"><div class="sec-head"><h2>Share of views gained over time</h2><span class="sub">daily, long videos & lives</span></div>${shareTrend("cmpShare", sel)}</section>
+  <section class="sec"><div class="sec-head"><h2>Total channel views per day</h2><span class="sub">includes Shorts and older videos</span></div>${channelViewsTrend("cmpViews", sel)}</section>
+  <details class="fold sec" open><summary><h2>Subject mix</h2><span class="sub">share of each brand's uploads by subject · ${esc(label)} · a title can count in more than one subject</span></summary><div class="fold-body">
+    <div class="tablewrap"><table><thead>${head.replace("Measure · " + esc(label), "Subject")}</thead><tbody>${mixRows}</tbody></table></div></div></details>`;
+}
+
+// ---------- live clash calendar ----------
+function clashCalendar() {
+  const fx = v => !S.exam || v.exams.includes(S.exam), now = Date.now();
+  const ups = DB.vids.filter(v => (isUpcoming(v) || isLiveNow(v)) && fx(v) && v.at >= now - 3 * 36e5 && v.at <= now + 24 * 36e5);
+  const slots = new Map();
+  for (const v of ups) { const d = istDate(isLiveNow(v) ? new Date(now) : v.at); d.setUTCMinutes(0, 0, 0); const k = d.getTime(); if (!slots.has(k)) slots.set(k, []); slots.get(k).push(v); }
+  const rows = [...slots].sort((a, b) => a[0] - b[0]).map(([k, vs]) => { const home = vs.filter(v => v.brand === HOME), oth = vs.filter(v => v.brand !== HOME), by = groupBy(oth, v => v.brand);
+    const when = new Date(k - IST_MS);
+    return { _t: k, when: when.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", hour: "numeric" }), home: home.length, homeT: home.map(v => v.ch.name).join(", "),
+      others: oth.length, othT: [...by].sort((a, b) => b[1].length - a[1].length).map(([b, l]) => `${b} ${l.length}`).join(" · "), clash: home.length && oth.length ? oth.length : 0, _home: home.length > 0 }; });
+  if (!rows.length) return `<div class="empty">No lives scheduled in the next 24 hours.</div>`;
+  return table("clash", [{ k: "when", h: "Hour (IST)" }, { k: "home", h: HOME, num: 1, f: (x, r) => x ? `<span title="${esc(r.homeT)}">${x}</span>` : "–" }, { k: "others", h: "Competitors", num: 1 },
+    { k: "clash", h: "Clash", num: 1, f: x => x ? `<span class="pill hot">⚠ ${x} competing</span>` : "" }, { k: "othT", h: "Who else is live", f: x => esc(x) }], rows, { sortKey: "_t", dir: 1, limit: 12 });
 }
 
 // ---------- detail ----------
@@ -712,8 +846,8 @@ async function openVideo(id) {
   const H = await loadHist(), h = H[id];
   if (h && h.length > 1 && window.Chart) {
     const css = getComputedStyle(document.documentElement);
-    charts.forEach(c => c.destroy()); charts = [];
-    charts.push(new Chart(document.getElementById("vchart"), { type: "line",
+    if (window.__vchart) window.__vchart.destroy();
+    window.__vchart = (new Chart(document.getElementById("vchart"), { type: "line",
       data: { labels: h.map(s => fmtIST(new Date(s[0] * 6e4))), datasets: [{ data: h.map(s => s[1]), borderColor: css.getPropertyValue("--accent").trim(), backgroundColor: "transparent", tension: 0.25, pointRadius: 0, borderWidth: 2 }] },
       options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: css.getPropertyValue("--muted").trim(), maxTicksLimit: 4 }, grid: { display: false } }, y: { ticks: { color: css.getPropertyValue("--muted").trim(), callback: x => n(x) }, grid: { color: css.getPropertyValue("--line").trim() } } } } }));
   } else document.getElementById("chartNote").textContent = "The chart fills in as the tracker records this upload over the next few hours.";
@@ -737,9 +871,11 @@ function render() {
   if (!DB) return;
   renderFresh();
   VG_ON = hasVGain();
-  const views = { overview: vOverview, brands: vBrands, exams: vExams, videos: vVideos, live: vLive, trending: vTrending, insights: vInsights, channels: vChannels };
-  SEC = 0;
+  const views = { overview: vOverview, brands: vBrands, compare: vCompare, exams: vExams, videos: vVideos, live: vLive, trending: vTrending, insights: vInsights, channels: vChannels };
+  SEC = 0; HOOKS = [];
+  charts.forEach(c => c.destroy()); charts = [];
   document.getElementById("main").innerHTML = views[S.tab]();
+  HOOKS.forEach(f => f());
   document.getElementById("pageTitle").textContent = document.querySelector(`#tabs [data-t="${S.tab}"]`)?.textContent || "";
   if (S.tab === "brands") drawBrandChart();
 }
@@ -763,6 +899,7 @@ document.getElementById("main").addEventListener("click", e => {
   const lb = e.target.closest("[data-less]"); if (lb) { delete S.more[lb.dataset.less]; render(); return lb.closest("section, details")?.scrollIntoView({ block: "start" }); }
   const tb = e.target.closest("[data-tmore]"); if (tb) { const k = "t:" + tb.dataset.tmore; S.more[k] = !S.more[k]; return render(); }
   if (e.target.closest("[data-chmore]")) { S.more.pchan = !S.more.pchan; return render(); }
+  const cr = e.target.closest("[data-cmprm]"); if (cr) { S.cmp = (S.cmp || []).filter(b => b !== cr.dataset.cmprm); return render(); }
   const bg = e.target.closest("[data-brandgo]"); if (bg) { S.pickBrand = bg.dataset.brandgo; S.pickChan = ""; return goTab("brands"); }
   const pcb = e.target.closest("[data-pchan]"); if (pcb) { S.pickChan = pcb.dataset.pchan; return render(); }
   const bc = e.target.closest("[data-brand]"); if (bc) { S.pickBrand = bc.dataset.brand; S.pickChan = ""; return render(); }
@@ -770,11 +907,12 @@ document.getElementById("main").addEventListener("click", e => {
   const qc = e.target.closest("[data-q]"); if (qc) { S.q = qc.dataset.q; document.getElementById("q").value = S.q; return goTab("videos"); }
   const vs = e.target.closest("#vsort button"); if (vs) { S.vsort = vs.dataset.v; return render(); }
 });
+document.getElementById("main").addEventListener("change", e => { const ca = e.target.closest("select[data-cmpadd]"); if (ca && ca.value) { S.cmp = [...(S.cmp || []), ca.value].slice(0, 4); return render(); } });
 document.getElementById("main").addEventListener("change", e => { const sel = e.target.closest("select[data-brandsel]"); if (sel && sel.value) { S.pickBrand = sel.value; S.pickChan = ""; render(); } });
 document.getElementById("main").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("card")) { e.preventDefault(); openVideo(e.target.dataset.vid); } });
 document.getElementById("dlg").addEventListener("click", e => { if (e.target.id === "dlg") e.target.close(); });
 window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h !== S.tab && document.querySelector(`#tabs [data-t="${h}"]`)) goTab(h); });
-const h0 = location.hash.slice(1); if (["overview", "brands", "exams", "videos", "live", "trending", "insights", "channels"].includes(h0)) goTab(h0);
+const h0 = location.hash.slice(1); if (["overview", "brands", "compare", "exams", "videos", "live", "trending", "insights", "channels"].includes(h0)) goTab(h0);
 load();
 setInterval(load, 120000);           // check for new data every 2 minutes (redraws only when it changed)
 setInterval(renderFresh, 60000);     // keep the "updated x min ago" label current without redrawing
