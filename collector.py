@@ -188,12 +188,51 @@ def tag(s):
     return "#" + re.sub(r"[^\w]", "", s.replace("&", "and"))
 
 
+HOME = os.environ.get("HOME_BRAND", "Drishti")
+LAUNCH = re.compile(r"batch|launch|admission|foundation|course|enrol|discount|offer|scholarship|demo class|orientation", re.I)
+
+
+def build_summary(videos, by_cid, day_gains, today):
+    """Evening Telegram digest: home brand's rank, leaders, top uploads today, launches."""
+    brand = {}
+    for cid, (gv, gl) in day_gains.items():
+        if cid in by_cid:
+            b = by_cid[cid]["brand"]; brand[b] = brand.get(b, 0) + gv + gl
+    total = sum(brand.values()) or 1
+    ranked = sorted(brand.items(), key=lambda x: -x[1])
+    rank = next((i + 1 for i, (b, _) in enumerate(ranked) if b == HOME), None)
+    fmt = lambda x: f"{x / 1e5:.1f} L" if x >= 1e5 else f"{x / 1e3:.1f}K" if x >= 1e3 else str(x)
+    lines = [f"🌙 <b>Daily summary · {datetime.strptime(today, '%Y-%m-%d').strftime('%d %b')}</b>", ""]
+    if rank:
+        lines.append(f"<b>{html.escape(HOME)}</b>: #{rank} of {len(ranked)} brands · {brand[HOME] / total:.1%} of views gained ({fmt(brand[HOME])})")
+    lines.append("Leaders: " + " · ".join(f"{html.escape(b)} {v / total:.0%}" for b, v in ranked[:3]))
+    todays = [v for v in videos.values() if v.get("gd") == today and v.get("gt")]
+    top = sorted(todays, key=lambda v: -v["gt"])[:5]
+    if top:
+        lines += ["", "<b>Most views gained today</b>"]
+        for v in top:
+            ch = by_cid.get(v["c"], {})
+            lines.append(f"• <a href=\"https://youtu.be/{v['id']}\">{html.escape(v['t'][:70], quote=False)}</a> · {html.escape(ch.get('brand', ''))} · +{fmt(v['gt'])}")
+    new_today = [v for v in videos.values() if ist_day(parse(air_time(v))) == today and v.get("ls") != "upcoming"]
+    launches = [v for v in new_today if LAUNCH.search(v["t"])]
+    lines += ["", f"Uploads today: {len(new_today)} ({sum(1 for v in new_today if v['k'] == 'live')} lives)"]
+    if launches:
+        lines.append("<b>Batch / course launches</b>")
+        for v in launches[:5]:
+            lines.append(f"• {html.escape(by_cid.get(v['c'], {}).get('brand', ''))}: <a href=\"https://youtu.be/{v['id']}\">{html.escape(v['t'][:70], quote=False)}</a>")
+    return "\n".join(lines)
+
+
 def caption(kind, v, ch):
     prem = v["k"] == "video"
     head = {"video": "🎥 <b>New video</b>", "live": "🎬 <b>PREMIERE NOW</b>" if prem else "🔴 <b>LIVE NOW</b>",
-            "upcoming": "⏰ <b>Premiere scheduled</b>" if prem else "⏰ <b>Live scheduled</b>", "stream": "🔴 <b>Live stream</b>"}[kind]
+            "upcoming": "⏰ <b>Premiere scheduled</b>" if prem else "⏰ <b>Live scheduled</b>", "stream": "🔴 <b>Live stream</b>",
+            "breakout": "🚀 <b>Breakout</b>"}[kind]
     url = f"https://www.youtube.com/watch?v={v['id']}"
     extra = []
+    if kind == "breakout":
+        hrs = max(1, int(age(v).total_seconds() // 3600))
+        extra.append(f"👁 {v.get('v', 0):,} views in {hrs}h · about {v.get('_ratio', 0):.1f}× this channel's usual")
     if kind == "upcoming" and v.get("ss"):
         extra.append("🕒 " + parse(v["ss"]).astimezone(IST).strftime("%d %b, %I:%M %p IST"))
     if kind == "live" and v.get("cv"):
@@ -423,6 +462,39 @@ def main():
     for vid in [k for k, t in sent.items() if NOW - parse(t) > timedelta(days=14)]:
         sent.pop(vid)
 
+    # breakouts: uploads 3-36h old running well ahead of their channel's usual views at 24h
+    usual = {}
+    for v in videos.values():
+        if v.get("v24") is not None:
+            usual.setdefault((v["c"], v["k"]), []).append(v["v24"])
+    usual = {k: sorted(l)[len(l) // 2] for k, l in usual.items() if len(l) >= 5}
+    seed_breakouts = "breakouts" not in alerts  # first run with this feature: record, don't alert
+    broke = alerts.setdefault("breakouts", {})
+    found = []
+    for v in videos.values():
+        a = age(v)
+        if v["id"] in broke or v.get("ls") in ("upcoming", "live") or not timedelta(hours=3) <= a <= timedelta(hours=36):
+            continue
+        m = usual.get((v["c"], v["k"]))
+        if not m or m < 300:
+            continue
+        expected = max(100, m * min(1.0, (a.total_seconds() / 86400) ** 0.5))  # views are front-loaded, so scale by sqrt of age
+        ratio = v.get("v", 0) / expected
+        if ratio >= 5 and v.get("v", 0) >= 2000:
+            found.append(dict(v, _ratio=ratio))
+    for v in sorted(found, key=lambda x: -x["_ratio"])[:len(found) if seed_breakouts else 3]:
+        broke[v["id"]] = NOW_ISO
+        if not first_alert_run and not seed_breakouts:
+            outbox.append(("breakout", v))
+    for vid in [k for k, t in broke.items() if NOW - parse(t) > timedelta(days=14)]:
+        broke.pop(vid)
+
+    # evening summary, once a day after 9 PM IST
+    summary = None
+    if NOW.astimezone(IST).hour >= 21 and alerts.get("summary_day") != today and not first_alert_run:
+        alerts["summary_day"] = today
+        summary = build_summary(videos, by_cid, daily["days"].get(today, {}), today)
+
     outbox.sort(key=lambda o: air_time(o[1]))
     print(f"Checked {len(channels)} channels. Uploads tracked: {len(videos)}. Alerts: {len(outbox)}"
           + (" [first run: recording existing uploads, no alerts]" if first_alert_run else ""))
@@ -434,6 +506,11 @@ def main():
                     print("---\n" + re.sub(r"<[^>]+>", "", cap)); continue
                 tg("sendPhoto", {"chat_id": CHAT, "photo": f"https://i.ytimg.com/vi/{v['id']}/hqdefault.jpg", "caption": cap, "parse_mode": "HTML"})
                 time.sleep(1.1)
+            if summary:
+                if dry:
+                    print("--- SUMMARY\n" + re.sub(r"<[^>]+>", "", summary))
+                else:
+                    tg("sendMessage", {"chat_id": CHAT, "parse_mode": "HTML", "text": summary, "disable_web_page_preview": "true"})
             if first_alert_run and not dry:
                 tg("sendMessage", {"chat_id": CHAT, "parse_mode": "HTML",
                                    "text": f"✅ <b>Tracker is on.</b> Watching {len(channels)} channels for new videos and live streams (no Shorts)."})
